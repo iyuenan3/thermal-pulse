@@ -6,10 +6,10 @@
 
 1. `SMCReadAdapter`：已实现。只读打开 AppleSMC，读取 key info、数据类型和原始值；C bridging header 固定校验 80 字节 user-client ABI。
 2. typed sensor model + `SensorClassifier`：已实现首版。动态识别风扇数量、实际值和最大值；温度 key 仅作为未确认候选，不赋予部件名称。
-3. `SMCProbeService`：已实现一次性全量 key 枚举、元数据扫描、候选白名单采样和逐项失败隔离。
-4. `TelemetrySampler`：待实现。目标每秒采样一次，并读取 `ProcessInfo.thermalState`、风扇数量和实际 RPM。
-5. `TimeSeriesStore`：待实现。内存环形缓冲保存最近 1 小时数据，不在首版自动写盘。
-6. SwiftUI 监控壳：已实现菜单栏摘要、一次性探测状态、风扇读数和高级原始温度候选列表；统计值和多曲线仍待实现。
+3. `SMCProbeService`：已实现启动或手动刷新时的一次性全量 key 枚举、元数据缓存、动态采样白名单和逐项失败隔离。每秒采样直接复用已验证元数据，不重复枚举。
+4. `TelemetrySampler`：已实现。使用单调时钟按 1 Hz 读取有效的风扇实际转速与温度候选，同时采集 `ProcessInfo.thermalState`；错过节拍时丢弃旧节拍，不追赶突发读取。
+5. `TimeSeriesStore`：已实现。每个传感器用固定容量 3600 的内存环形缓冲保存有效样本，无效或不可用值只保留在最新帧，不污染统计历史。
+6. SwiftUI 监控壳：已实现菜单栏摘要、探测与采样状态、风扇读数、高级原始温度候选列表，以及样本数、最新值、最小值、最大值和平均值；多曲线仍待实现。
 7. `TurboCoordinator`：待实现。维护用户可见状态和倒计时，通过私有 XPC 调用 helper，本身不写 SMC。
 
 监控数据流：
@@ -43,16 +43,19 @@ helper 启动或重启时先检查自己的持久租约：存在旧租约则恢�
 - 低层 SMC ABI 隔离在独立适配层，不让原始 key 和二进制布局扩散到 UI 与业务逻辑。
 - privileged helper 采用 ServiceManagement 的现代注册方式和 XPC，不使用已弃用安装链路作为首选。
 - 首版数据只保存在内存，先验证采样稳定性、传感器语义和界面价值，再决定是否持久化或导出。
-- 关键选择与取舍见 DECISIONS 的 ADR-001 至 ADR-006。
+- 全量枚举只在启动或用户手动刷新时执行。稳定白名单采样使用缓存元数据和单调时钟，避免每秒重新发现 key 或因延迟形成追赶突发。
+- 关键选择与取舍见 DECISIONS 的 ADR-001 至 ADR-008。
 
 ## 当前只读实现证据
 
 - Xcode targets：`ThermalPulse`、`ThermalPulseCore`、`ThermalPulseTests`。
 - `SMCReadAdapter` 只定义 read bytes、read index 和 read key info 三类命令，不定义写命令。
-- 普通测试验证 key 编码、80 字节 ABI、整数、定点数、Apple Silicon 小端浮点解码、分类和范围判断。
+- 普通测试共 19 项，其中 18 项通过，1 项实机测试按设计跳过。覆盖 key 编码、80 字节 ABI、解码、分类、动态采样白名单、单项失败隔离、停止语义、环形覆盖和统计。
 - `ThermalPulseHardwareProbe` 是显式硬件测试 scheme。2026-08-28 在当前 Mac16,7 上读到 3337 个 key、2 个风扇，并验证两个风扇的实际 RPM 不超过各自实时读回的最大 RPM。
 - 全量扫描取得 3293 个 key 的元数据，按白名单采样 315 个候选；44 个不可读项被隔离计数，没有伪装为零或终止整轮扫描。
-- 上述证据只覆盖普通权限只读路径，不覆盖持续采样、UI 人工验收、SMC 写入或 Turbo 安全恢复。
+- 第二个只读切片从初始候选中动态选择 312 个有效实际值或温度项，使用缓存元数据连续读取两轮，失败数均为 0。
+- Debug App 短时运行冒烟未见崩溃或标准错误输出。该结果不是 GUI 人工验收，也不替代 1 小时以上稳定性验证。
+- 上述证据只覆盖普通权限短时只读路径，不覆盖曲线、中文传感器语义、长时间运行、SMC 写入或 Turbo 安全恢复。
 
 ## 禁改项 / Forbidden Refactors
 
