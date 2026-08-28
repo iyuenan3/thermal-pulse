@@ -4,6 +4,23 @@
 
 当前已有可执行的只读监控里程碑，尚无 release。
 
+## Unreleased · read-only charts milestone · 2026-08-28
+
+### Added
+
+- 新增最多 6 项传感器选择，以及 5 分钟、15 分钟和 1 小时 Swift Charts 历史曲线，见 ADR-009。
+- 新增 RPM 与原始温度候选分图、保留端点和局部极值的显示降采样，以及采样间隙断线呈现。
+- 新增选择策略、降采样、间隙、窗口查询和 312 序列一小时容量边界测试。
+
+### Changed
+
+- 环形缓冲改为增量维护总和与极值，摘要生成不再每秒遍历所有历史点。
+- 曲线默认只选择运行时验证的风扇实际 RPM，原始温度候选必须手动加入。
+
+### Not included
+
+- 本里程碑不包含传感器中文语义确认、真实 1 小时运行与人工界面验收、SMC 写入、helper、Turbo、签名、安装或 release。
+
 ## Unreleased · read-only sampling milestone · 2026-08-28
 
 ### Added

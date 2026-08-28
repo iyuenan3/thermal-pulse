@@ -31,4 +31,4 @@ ThermalPulse 是一款原生 macOS 本地工具，用活动监视器式界面展
 
 ## 生命周期
 
-active，pre-alpha。当前已有可构建的只读监控切片，并在 Mac16,7 上验证普通权限风扇枚举与 RPM 读回；持续采样、曲线、Turbo、helper、安装和发布仍未完成。
+active，pre-alpha。当前已有可构建的只读监控、持续采样、内存历史和选择性曲线，并在 Mac16,7 上验证普通权限风扇枚举与 RPM 读回；真实 1 小时稳定性、温度语义、Turbo、helper、安装和发布仍未完成。
