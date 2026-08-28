@@ -33,3 +33,27 @@
 - Decision: 使用原生 Swift、SwiftUI 与必要的 AppKit，SMC 访问隔离到 adapter；Turbo helper 采用 ServiceManagement 和私有 XPC，首选 `SMAppService` 路线。
 - Alternatives（否决）: Electron 常驻应用；整个 App 以 root 运行；setuid 工具；把已弃用 helper 安装 API 作为新项目首选；增加本地 HTTP 服务。
 - Tradeoff: Xcode 签名和 helper 调试门槛较高，但运行时负担、权限边界和 macOS 集成更合适。
+
+## ADR-005 · 用 C 结构锁定 AppleSMC user-client ABI · 2026-08-28
+
+- Problem: 直接用 Swift 声明 AppleSMC 参数结构时，字段表面宽度正确仍可能因尾部对齐得到错误 stride，导致 user-client 调用边界不可靠。
+- Constraint: 原始 ABI 必须集中、可编译期验证，且普通监控只能暴露读取能力。
+- Decision: 用唯一的 C bridging header 定义参数结构，以 `_Static_assert` 锁定 80 字节布局；Swift adapter 只实现 read bytes、read index 和 read key info，并用单元测试再次验证 stride。
+- Alternatives（否决）: 仅靠 Swift 默认布局；每个调用点复制结构；为了复用第三方代码同时引入写命令。
+- Tradeoff: 工程增加一个 C 桥接边界，但布局错误能在编译或测试阶段暴露，写入能力也不会随低层模板被意外带入。
+
+## ADR-006 · 普通测试与真实硬件探测分离 · 2026-08-28
+
+- Problem: SMC 解码和分类需要快速、确定的逻辑测试，真实 AppleSMC 枚举又只能在受支持的 Mac 上取得证据。
+- Constraint: 日常测试不能因机器差异隐式失败，也不能把模拟数据当成实机成功；硬件探测仍必须保持普通权限只读。
+- Decision: 普通 `ThermalPulse` scheme 默认跳过集成测试，另设显式 `ThermalPulseHardwareProbe` scheme 编译启用真实枚举、风扇数量及实际和最大 RPM 关系验证。
+- Alternatives（否决）: 每次单元测试都访问 AppleSMC；只保留手工终端脚本；用环境变量作为唯一启用机制。
+- Tradeoff: 多维护一个 build configuration 和 scheme，但自动逻辑证据与当前机器实测证据边界清晰，也能防止误跑硬件路径。
+
+## ADR-007 · 最低系统设为 macOS 26.0 · 2026-08-28
+
+- Problem: 暂定 macOS 13 会要求额外维护旧系统兼容分支，也与当前 Xcode 26 测试工具链的实际基线不一致。
+- Constraint: 用户只要求支持 macOS 26 及更高版本，首版无需承担旧系统兼容成本。
+- Decision: App、核心库、普通测试和硬件探测统一使用 macOS 26.0 deployment target，不支持 macOS 25 及更早版本。
+- Alternatives（否决）: 继续兼容 macOS 13；将 App 与测试目标设置成不同的最低版本；等发布前再决定。
+- Tradeoff: 放弃旧系统用户，换取更小的兼容面、统一工具链和使用 macOS 26 API 的自由度。

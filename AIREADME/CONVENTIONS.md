@@ -11,11 +11,14 @@
 ## 偏好模式
 
 - 原始 SMC 访问只存在于低层 adapter，业务层只接触 typed value、单位、有效性和错误。
+- AppleSMC user-client 参数结构由单一 C bridging header 定义，并同时用 C `_Static_assert` 与 Swift 单元测试锁定 80 字节 ABI，不在 Swift 文件中复制近似布局。
+- SMC 数据按类型解码：整数与 `sp` / `fp` 定点数使用大端，Apple Silicon `flt ` 使用小端 IEEE 754；禁止对所有类型套用同一字节序。
 - 传感器值携带单位与有效性，不用特殊数值表示未知；温度统一摄氏度，转速统一 RPM，时长统一秒。
 - 一个传感器失败只隔离该传感器，不中断整轮采样；风扇控制前置验证失败则阻断整次 Turbo。
 - Turbo 使用 helper 持有的绝对截止时间和持久租约；UI 倒计时只是展示，不是安全计时器。
 - 休眠、时间变化和 helper 重启后重新比较截止时间与租约所有权，过期即恢复自动。
 - 状态机、解析和边界验证优先纯逻辑测试；真实 SMC 写入使用显式人工授权的设备验收。
+- 普通 `ThermalPulse` scheme 的测试默认跳过真实 AppleSMC；只读实机枚举使用显式 `ThermalPulseHardwareProbe` scheme，避免日常测试隐式依赖硬件。
 - 日志默认不记录设备标识和完整原始环境，只记录诊断所需的机型类别、key、数据类型、状态和错误码。
 - 中文文档与界面使用中文标点，不使用破折号。
 - 日期和验收时间使用 `Asia/Shanghai`，星期与日期映射必须由工具计算。

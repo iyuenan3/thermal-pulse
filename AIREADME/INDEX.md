@@ -1,6 +1,6 @@
 # ThermalPulse · AIREADME
-> macOS 热状态监控与限时 Turbo 散热工具 ｜ 生命周期: planned
-> last-synced: pre-code · 2026-08-28
+> macOS 热状态监控与限时 Turbo 散热工具 ｜ 生命周期: active, pre-alpha
+> last-synced: d74eae3 · 2026-08-28
 
 ## 状态
 
@@ -9,14 +9,14 @@
 | CORE | ✅ | 身份、边界与失效安全红线已确定 |
 | RELATIONS | ✅ | 当前无其他项目依赖或共享底座 |
 | SPEC | ⚑ | 本地产品契约已定，XPC 错误模型待实现前冻结 |
-| ARCHITECTURE | ✅ | 监控数据流和 Turbo 安全状态机已确定 |
-| DEPLOYMENT | ⚑ | 本地运行方向已定，签名、注册与卸载流程待实作验证 |
+| ARCHITECTURE | ✅ | 只读扫描实现边界、监控数据流和 Turbo 安全状态机已确定 |
+| DEPLOYMENT | ⚑ | 最低系统已定为 macOS 26.0，签名、注册与卸载流程待实作验证 |
 | PRD | ✅ | 监控优先、Turbo 限时的产品意图已确定 |
-| ROADMAP | ✅ | pre-code 阶段顺序已确定 |
-| CONVENTIONS | ✅ | 传感器、时间、安全与测试约定已确定 |
-| DECISIONS | ✅ | 立项关键决策已记录 |
-| MEMORY | ⚑ | 尚无运行时事故或实现踩坑 |
-| CHANGELOG | ⚑ | 尚无版本或里程碑 |
+| ROADMAP | ✅ | 只读基线已完成，当前转向持续采样与内存曲线 |
+| CONVENTIONS | ✅ | 传感器、SMC ABI、字节序、安全与测试约定已确定 |
+| DECISIONS | ✅ | 立项与首个只读实现切片的关键决策已记录 |
+| MEMORY | ✅ | 已记录 SMC ABI 布局和 Apple Silicon 浮点字节序踩坑 |
+| CHANGELOG | ✅ | 首个可构建只读监控切片已记录，尚无 release |
 
 ## 按任务读
 

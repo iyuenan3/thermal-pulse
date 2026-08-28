@@ -4,11 +4,29 @@
 
 计划运行在带主动散热的 Apple Silicon Mac。首台开发与验收机为 Mac16,7、Apple M4 Pro；其他机型必须经过只读探测与真实写入验收后再加入支持矩阵。
 
-计划最低系统为 macOS 13 或更新版本，以使用现代 ServiceManagement API。最终 deployment target 会在 Xcode 工程建立和 API 验证后冻结。
+最低系统正式设为 macOS 26.0，不支持 macOS 25 及更早版本。工程的 Debug、Release 和 HardwareProbe configuration 统一使用 `MACOSX_DEPLOYMENT_TARGET = 26.0`，以 Xcode 26.6 构建和测试。
 
 ## 怎么起
 
-当前为 pre-code，没有可执行 App、构建 scheme 或 helper。建立 Xcode 工程后，在项目文档中补充准确 scheme 和测试命令；本机可以通过单条命令设置 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`，不要求修改全局 `xcode-select`。
+当前提供未签名的本地开发构建，不提供安装包或 helper。bundle identifier、开发者签名身份和 helper Mach service 名称仍未冻结。
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ThermalPulse.xcodeproj -scheme ThermalPulse -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
+```
+
+普通单元测试默认跳过真实硬件探测：
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -quiet -project ThermalPulse.xcodeproj -scheme ThermalPulse -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES test
+```
+
+需要在当前机器显式验证 AppleSMC 只读链路时，使用独立 scheme：
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ThermalPulse.xcodeproj -scheme ThermalPulseHardwareProbe -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES -only-testing:ThermalPulseTests/SMCReadAdapterIntegrationTests test
+```
+
+所有命令只对单次调用设置 `DEVELOPER_DIR`，不得修改全局 `xcode-select`。
 
 ## 域名 / 入口
 

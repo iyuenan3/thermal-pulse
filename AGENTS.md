@@ -4,9 +4,11 @@
 
 ## 当前状态
 
-- 生命周期：planned，pre-code。
+- 生命周期：active，pre-alpha。
 - 产品定位：macOS 本地热状态监控工具，提供活动监视器式传感器曲线，以及一次最多 10 分钟的 Turbo 全速散热。
-- 当前没有实现代码、构建产物、已安装 helper 或发布版本。
+- 最低系统：macOS 26.0，不支持 macOS 25 及更早版本。
+- 当前已有可构建的原生 SwiftUI App、只读 `SMCReadAdapter`、typed sensor model 和测试目标；尚无持续采样、曲线、helper、安装产物或发布版本。
+- 当前 Mac16,7 已用普通权限读回 2 个风扇的实际与最大 RPM。该证据只覆盖只读链路，不代表 Turbo 已实现或通过。
 - 首台验收机是当前 Mac16,7、Apple M4 Pro。它只是首个验证对象，不代表已支持全部 Apple Silicon 机型。
 
 ## 启动顺序
@@ -65,15 +67,15 @@
 
 ## 常用命令
 
-当前为 pre-code，构建与测试命令会在 Xcode 工程建立后补充。现阶段可用：
-
 ```bash
 git status --short --branch
 bash ~/.agents/skills/aireadme/scripts/check.sh
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -version
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ThermalPulse.xcodeproj -scheme ThermalPulse -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -quiet -project ThermalPulse.xcodeproj -scheme ThermalPulse -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES test
 ```
 
 不要为了构建擅自修改全局 `xcode-select`。优先对单条命令设置 `DEVELOPER_DIR`。
+真实 AppleSMC 探测只在明确需要硬件验收时运行 `ThermalPulseHardwareProbe` scheme；普通单元测试默认跳过它。
 
 ## 文档维护责任
 

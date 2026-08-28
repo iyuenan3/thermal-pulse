@@ -4,12 +4,13 @@
 
 ### 普通用户进程
 
-1. `SMCReadAdapter`：只读打开 AppleSMC，读取 key info、数据类型和原始值。
-2. `SensorCatalog`：把已验证 key 映射到稳定身份、类别、单位和合理范围；未知项保持原始身份。
-3. `TelemetrySampler`：目标每秒采样一次，并读取 `ProcessInfo.thermalState`、风扇数量和实际 RPM。
-4. `TimeSeriesStore`：内存环形缓冲保存最近 1 小时数据，不在首版自动写盘。
-5. `ThermalDashboard`：提供菜单栏摘要、传感器列表、统计值和多曲线视图。
-6. `TurboCoordinator`：维护用户可见状态和倒计时，通过私有 XPC 调用 helper，本身不写 SMC。
+1. `SMCReadAdapter`：已实现。只读打开 AppleSMC，读取 key info、数据类型和原始值；C bridging header 固定校验 80 字节 user-client ABI。
+2. typed sensor model + `SensorClassifier`：已实现首版。动态识别风扇数量、实际值和最大值；温度 key 仅作为未确认候选，不赋予部件名称。
+3. `SMCProbeService`：已实现一次性全量 key 枚举、元数据扫描、候选白名单采样和逐项失败隔离。
+4. `TelemetrySampler`：待实现。目标每秒采样一次，并读取 `ProcessInfo.thermalState`、风扇数量和实际 RPM。
+5. `TimeSeriesStore`：待实现。内存环形缓冲保存最近 1 小时数据，不在首版自动写盘。
+6. SwiftUI 监控壳：已实现菜单栏摘要、一次性探测状态、风扇读数和高级原始温度候选列表；统计值和多曲线仍待实现。
+7. `TurboCoordinator`：待实现。维护用户可见状态和倒计时，通过私有 XPC 调用 helper，本身不写 SMC。
 
 监控数据流：
 
@@ -42,7 +43,16 @@ helper 启动或重启时先检查自己的持久租约：存在旧租约则恢�
 - 低层 SMC ABI 隔离在独立适配层，不让原始 key 和二进制布局扩散到 UI 与业务逻辑。
 - privileged helper 采用 ServiceManagement 的现代注册方式和 XPC，不使用已弃用安装链路作为首选。
 - 首版数据只保存在内存，先验证采样稳定性、传感器语义和界面价值，再决定是否持久化或导出。
-- 关键选择与取舍见 DECISIONS 的 ADR-001 至 ADR-004。
+- 关键选择与取舍见 DECISIONS 的 ADR-001 至 ADR-006。
+
+## 当前只读实现证据
+
+- Xcode targets：`ThermalPulse`、`ThermalPulseCore`、`ThermalPulseTests`。
+- `SMCReadAdapter` 只定义 read bytes、read index 和 read key info 三类命令，不定义写命令。
+- 普通测试验证 key 编码、80 字节 ABI、整数、定点数、Apple Silicon 小端浮点解码、分类和范围判断。
+- `ThermalPulseHardwareProbe` 是显式硬件测试 scheme。2026-08-28 在当前 Mac16,7 上读到 3337 个 key、2 个风扇，并验证两个风扇的实际 RPM 不超过各自实时读回的最大 RPM。
+- 全量扫描取得 3293 个 key 的元数据，按白名单采样 315 个候选；44 个不可读项被隔离计数，没有伪装为零或终止整轮扫描。
+- 上述证据只覆盖普通权限只读路径，不覆盖持续采样、UI 人工验收、SMC 写入或 Turbo 安全恢复。
 
 ## 禁改项 / Forbidden Refactors
 
