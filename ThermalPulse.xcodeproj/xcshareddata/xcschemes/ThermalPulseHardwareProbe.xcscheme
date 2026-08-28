@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion="2660" version="1.7">
+   <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+      <BuildActionEntries>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="600000000000000000000003" BuildableName="ThermalPulseTests.xctest" BlueprintName="ThermalPulseTests" ReferencedContainer="container:ThermalPulse.xcodeproj"/>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction buildConfiguration="HardwareProbe" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES">
+      <Testables>
+         <TestableReference skipped="NO">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="600000000000000000000003" BuildableName="ThermalPulseTests.xctest" BlueprintName="ThermalPulseTests" ReferencedContainer="container:ThermalPulse.xcodeproj"/>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+   <AnalyzeAction buildConfiguration="HardwareProbe"/>
+</Scheme>

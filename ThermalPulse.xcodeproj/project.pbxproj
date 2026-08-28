@@ -1,0 +1,359 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		300000000000000000000001 /* SMCKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000001 /* SMCKey.swift */; };
+		300000000000000000000002 /* SMCTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000002 /* SMCTypes.swift */; };
+		300000000000000000000003 /* SMCValueDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000003 /* SMCValueDecoder.swift */; };
+		300000000000000000000004 /* SMCReadAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000004 /* SMCReadAdapter.swift */; };
+		300000000000000000000005 /* SensorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000005 /* SensorModels.swift */; };
+		300000000000000000000006 /* SensorClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000006 /* SensorClassifier.swift */; };
+		300000000000000000000007 /* SMCProbeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000007 /* SMCProbeService.swift */; };
+		300000000000000000000011 /* ThermalPulseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* ThermalPulseApp.swift */; };
+		300000000000000000000012 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* ContentView.swift */; };
+		300000000000000000000013 /* ThermalMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* ThermalMonitorViewModel.swift */; };
+		300000000000000000000014 /* libThermalPulseCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 240000000000000000000002 /* libThermalPulseCore.a */; };
+		300000000000000000000015 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000001 /* IOKit.framework */; };
+		300000000000000000000021 /* SMCKeyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000001 /* SMCKeyTests.swift */; };
+		300000000000000000000022 /* SMCValueDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000002 /* SMCValueDecoderTests.swift */; };
+		300000000000000000000023 /* SensorClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000003 /* SensorClassifierTests.swift */; };
+		300000000000000000000024 /* SMCReadAdapterIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000004 /* SMCReadAdapterIntegrationTests.swift */; };
+		300000000000000000000025 /* libThermalPulseCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 240000000000000000000002 /* libThermalPulseCore.a */; };
+		300000000000000000000026 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000001 /* IOKit.framework */; };
+		300000000000000000000027 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000002 /* XCTest.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		920000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 900000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 600000000000000000000002;
+			remoteInfo = ThermalPulseCore;
+		};
+		920000000000000000000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 900000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 600000000000000000000002;
+			remoteInfo = ThermalPulseCore;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		200000000000000000000001 /* ThermalPulseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalPulseApp.swift; sourceTree = "<group>"; };
+		200000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		200000000000000000000003 /* ThermalMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalMonitorViewModel.swift; sourceTree = "<group>"; };
+		210000000000000000000001 /* SMCKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCKey.swift; sourceTree = "<group>"; };
+		210000000000000000000002 /* SMCTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCTypes.swift; sourceTree = "<group>"; };
+		210000000000000000000003 /* SMCValueDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCValueDecoder.swift; sourceTree = "<group>"; };
+		210000000000000000000004 /* SMCReadAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCReadAdapter.swift; sourceTree = "<group>"; };
+		210000000000000000000005 /* SensorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorModels.swift; sourceTree = "<group>"; };
+		210000000000000000000006 /* SensorClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorClassifier.swift; sourceTree = "<group>"; };
+		210000000000000000000007 /* SMCProbeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCProbeService.swift; sourceTree = "<group>"; };
+		210000000000000000000008 /* ThermalPulseSMC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ThermalPulseSMC.h; sourceTree = "<group>"; };
+		220000000000000000000001 /* SMCKeyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCKeyTests.swift; sourceTree = "<group>"; };
+		220000000000000000000002 /* SMCValueDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCValueDecoderTests.swift; sourceTree = "<group>"; };
+		220000000000000000000003 /* SensorClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorClassifierTests.swift; sourceTree = "<group>"; };
+		220000000000000000000004 /* SMCReadAdapterIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCReadAdapterIntegrationTests.swift; sourceTree = "<group>"; };
+		230000000000000000000001 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		230000000000000000000002 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		240000000000000000000001 /* ThermalPulse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ThermalPulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		240000000000000000000002 /* libThermalPulseCore.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libThermalPulseCore.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		240000000000000000000003 /* ThermalPulseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThermalPulseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		500000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				300000000000000000000014 /* libThermalPulseCore.a in Frameworks */,
+				300000000000000000000015 /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		500000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		500000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				300000000000000000000025 /* libThermalPulseCore.a in Frameworks */,
+				300000000000000000000026 /* IOKit.framework in Frameworks */,
+				300000000000000000000027 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		400000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000003 /* ThermalPulse */,
+				400000000000000000000005 /* ThermalPulseCore */,
+				400000000000000000000009 /* ThermalPulseTests */,
+				40000000000000000000000A /* Frameworks */,
+				400000000000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		400000000000000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				240000000000000000000001 /* ThermalPulse.app */,
+				240000000000000000000002 /* libThermalPulseCore.a */,
+				240000000000000000000003 /* ThermalPulseTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		400000000000000000000003 /* ThermalPulse */ = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000004 /* App */,
+			);
+			path = ThermalPulse;
+			sourceTree = "<group>";
+		};
+		400000000000000000000004 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000001 /* ThermalPulseApp.swift */,
+				200000000000000000000002 /* ContentView.swift */,
+				200000000000000000000003 /* ThermalMonitorViewModel.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		400000000000000000000005 /* ThermalPulseCore */ = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000006 /* Models */,
+				400000000000000000000007 /* SMC */,
+				400000000000000000000008 /* Telemetry */,
+			);
+			path = ThermalPulseCore;
+			sourceTree = "<group>";
+		};
+		400000000000000000000006 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				210000000000000000000005 /* SensorModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		400000000000000000000007 /* SMC */ = {
+			isa = PBXGroup;
+			children = (
+				210000000000000000000001 /* SMCKey.swift */,
+				210000000000000000000002 /* SMCTypes.swift */,
+				210000000000000000000003 /* SMCValueDecoder.swift */,
+				210000000000000000000004 /* SMCReadAdapter.swift */,
+				210000000000000000000008 /* ThermalPulseSMC.h */,
+			);
+			path = SMC;
+			sourceTree = "<group>";
+		};
+		400000000000000000000008 /* Telemetry */ = {
+			isa = PBXGroup;
+			children = (
+				210000000000000000000006 /* SensorClassifier.swift */,
+				210000000000000000000007 /* SMCProbeService.swift */,
+			);
+			path = Telemetry;
+			sourceTree = "<group>";
+		};
+		400000000000000000000009 /* ThermalPulseTests */ = {
+			isa = PBXGroup;
+			children = (
+				220000000000000000000001 /* SMCKeyTests.swift */,
+				220000000000000000000002 /* SMCValueDecoderTests.swift */,
+				220000000000000000000003 /* SensorClassifierTests.swift */,
+				220000000000000000000004 /* SMCReadAdapterIntegrationTests.swift */,
+			);
+			path = ThermalPulseTests;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				230000000000000000000001 /* IOKit.framework */,
+				230000000000000000000002 /* XCTest.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		600000000000000000000001 /* ThermalPulse */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 800000000000000000000002 /* Build configuration list for PBXNativeTarget "ThermalPulse" */;
+			buildPhases = (
+				500000000000000000000011 /* Sources */,
+				500000000000000000000001 /* Frameworks */,
+				500000000000000000000021 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				910000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = ThermalPulse;
+			productName = ThermalPulse;
+			productReference = 240000000000000000000001 /* ThermalPulse.app */;
+			productType = "com.apple.product-type.application";
+		};
+		600000000000000000000002 /* ThermalPulseCore */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 800000000000000000000003 /* Build configuration list for PBXNativeTarget "ThermalPulseCore" */;
+			buildPhases = (
+				500000000000000000000012 /* Sources */,
+				500000000000000000000002 /* Frameworks */,
+				500000000000000000000022 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ThermalPulseCore;
+			productName = ThermalPulseCore;
+			productReference = 240000000000000000000002 /* libThermalPulseCore.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		600000000000000000000003 /* ThermalPulseTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 800000000000000000000004 /* Build configuration list for PBXNativeTarget "ThermalPulseTests" */;
+			buildPhases = (
+				500000000000000000000013 /* Sources */,
+				500000000000000000000003 /* Frameworks */,
+				500000000000000000000023 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				910000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = ThermalPulseTests;
+			productName = ThermalPulseTests;
+			productReference = 240000000000000000000003 /* ThermalPulseTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		900000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					600000000000000000000001 = { CreatedOnToolsVersion = 26.6; };
+					600000000000000000000002 = { CreatedOnToolsVersion = 26.6; };
+					600000000000000000000003 = { CreatedOnToolsVersion = 26.6; TestTargetID = 600000000000000000000001; };
+				};
+			};
+			buildConfigurationList = 800000000000000000000001 /* Build configuration list for PBXProject "ThermalPulse" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = 400000000000000000000001;
+			productRefGroup = 400000000000000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				600000000000000000000001 /* ThermalPulse */,
+				600000000000000000000002 /* ThermalPulseCore */,
+				600000000000000000000003 /* ThermalPulseTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		500000000000000000000021 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		500000000000000000000022 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		500000000000000000000023 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		500000000000000000000011 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				300000000000000000000011 /* ThermalPulseApp.swift in Sources */,
+				300000000000000000000012 /* ContentView.swift in Sources */,
+				300000000000000000000013 /* ThermalMonitorViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		500000000000000000000012 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				300000000000000000000001 /* SMCKey.swift in Sources */,
+				300000000000000000000002 /* SMCTypes.swift in Sources */,
+				300000000000000000000003 /* SMCValueDecoder.swift in Sources */,
+				300000000000000000000004 /* SMCReadAdapter.swift in Sources */,
+				300000000000000000000005 /* SensorModels.swift in Sources */,
+				300000000000000000000006 /* SensorClassifier.swift in Sources */,
+				300000000000000000000007 /* SMCProbeService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		500000000000000000000013 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				300000000000000000000021 /* SMCKeyTests.swift in Sources */,
+				300000000000000000000022 /* SMCValueDecoderTests.swift in Sources */,
+				300000000000000000000023 /* SensorClassifierTests.swift in Sources */,
+				300000000000000000000024 /* SMCReadAdapterIntegrationTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		910000000000000000000001 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 600000000000000000000002 /* ThermalPulseCore */; targetProxy = 920000000000000000000001 /* PBXContainerItemProxy */; };
+		910000000000000000000002 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 600000000000000000000002 /* ThermalPulseCore */; targetProxy = 920000000000000000000002 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		700000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = Debug; };
+		700000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = Release; };
+		700000000000000000000003 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG THERMALPULSE_HARDWARE_TESTS"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = HardwareProbe; };
+		700000000000000000000011 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; COMBINE_HIDPI_IMAGES = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = Debug; };
+		700000000000000000000012 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; COMBINE_HIDPI_IMAGES = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = Release; };
+		700000000000000000000013 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; COMBINE_HIDPI_IMAGES = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = HardwareProbe; };
+		700000000000000000000021 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {MACH_O_TYPE = staticlib; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = Debug; };
+		700000000000000000000022 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {MACH_O_TYPE = staticlib; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = Release; };
+		700000000000000000000023 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {MACH_O_TYPE = staticlib; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = HardwareProbe; };
+		700000000000000000000031 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = Debug; };
+		700000000000000000000032 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = Release; };
+		700000000000000000000033 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = HardwareProbe; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		800000000000000000000001 /* Build configuration list for PBXProject "ThermalPulse" */ = {isa = XCConfigurationList; buildConfigurations = (700000000000000000000001 /* Debug */, 700000000000000000000002 /* Release */, 700000000000000000000003 /* HardwareProbe */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		800000000000000000000002 /* Build configuration list for PBXNativeTarget "ThermalPulse" */ = {isa = XCConfigurationList; buildConfigurations = (700000000000000000000011 /* Debug */, 700000000000000000000012 /* Release */, 700000000000000000000013 /* HardwareProbe */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		800000000000000000000003 /* Build configuration list for PBXNativeTarget "ThermalPulseCore" */ = {isa = XCConfigurationList; buildConfigurations = (700000000000000000000021 /* Debug */, 700000000000000000000022 /* Release */, 700000000000000000000023 /* HardwareProbe */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		800000000000000000000004 /* Build configuration list for PBXNativeTarget "ThermalPulseTests" */ = {isa = XCConfigurationList; buildConfigurations = (700000000000000000000031 /* Debug */, 700000000000000000000032 /* Release */, 700000000000000000000033 /* HardwareProbe */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = 900000000000000000000001 /* Project object */;
+}
