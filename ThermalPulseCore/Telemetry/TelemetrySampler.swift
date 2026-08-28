@@ -138,6 +138,13 @@ public actor TelemetrySampler {
         await store.history(for: key)
     }
 
+    public func histories(
+        for keys: [SMCKey],
+        since cutoff: Date? = nil
+    ) async -> [SMCKey: [SensorSamplePoint]] {
+        await store.histories(for: keys, since: cutoff)
+    }
+
     private func run(id: UUID, onUpdate: @escaping UpdateHandler) async {
         do {
             while !Task.isCancelled {

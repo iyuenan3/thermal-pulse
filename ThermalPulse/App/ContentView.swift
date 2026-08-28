@@ -9,7 +9,13 @@ struct ContentView: View {
             header
             summary
             Divider()
-            readings
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    charts
+                    readings
+                }
+            }
+            .frame(maxHeight: .infinity)
         }
         .padding(24)
         .onAppear {
@@ -72,6 +78,50 @@ struct ContentView: View {
         }
     }
 
+    private var charts: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("历史曲线")
+                        .font(.title2.bold())
+                    Text(
+                        "已选择 \(monitor.selectedSensorKeys.count)/\(ThermalMonitorViewModel.maximumChartSeriesCount) 项，原始温度候选需手动加入"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Picker(
+                    "时间范围",
+                    selection: Binding(
+                        get: { monitor.monitoringWindow },
+                        set: { monitor.setMonitoringWindow($0) }
+                    )
+                ) {
+                    ForEach(MonitoringWindow.allCases) { window in
+                        Text(window.title).tag(window)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 300)
+            }
+
+            if monitor.selectedSensorKeys.isEmpty {
+                Text("从下方读数列表选择最多 6 个传感器。默认只选择已验证风扇。")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 140)
+            } else if monitor.chartSeries.isEmpty {
+                ProgressView("正在积累所选传感器的历史样本")
+                    .frame(maxWidth: .infinity, minHeight: 140)
+            } else {
+                SensorHistoryCharts(
+                    series: monitor.chartSeries,
+                    window: monitor.monitoringWindow
+                )
+            }
+        }
+    }
+
     private var readings: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("当前读数")
@@ -81,23 +131,20 @@ struct ContentView: View {
                 Text("还没有取得可展示的风扇或温度候选读数。未知项不会伪装成 0。")
                     .foregroundStyle(.secondary)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 16) {
-                        if !monitor.visibleFanReadings.isEmpty {
-                            readingSection(
-                                title: "已验证风扇读数",
-                                readings: monitor.visibleFanReadings
-                            )
-                        }
-                        if !monitor.temperatureCandidates.isEmpty {
-                            readingSection(
-                                title: "高级原始温度候选，尚未确认部件语义",
-                                readings: monitor.temperatureCandidates
-                            )
-                        }
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    if !monitor.visibleFanReadings.isEmpty {
+                        readingSection(
+                            title: "已验证风扇读数",
+                            readings: monitor.visibleFanReadings
+                        )
+                    }
+                    if !monitor.temperatureCandidates.isEmpty {
+                        readingSection(
+                            title: "高级原始温度候选，尚未确认部件语义",
+                            readings: monitor.temperatureCandidates
+                        )
                     }
                 }
-                .frame(maxHeight: .infinity)
             }
         }
     }
@@ -133,6 +180,25 @@ struct ContentView: View {
                 }
             }
             Spacer()
+            Button {
+                monitor.toggleChartSelection(reading.descriptor.key)
+            } label: {
+                Image(
+                    systemName: monitor.isSelectedForChart(reading.descriptor.key)
+                        ? "chart.xyaxis.line"
+                        : "plus.circle"
+                )
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(
+                monitor.isSelectedForChart(reading.descriptor.key) ? Color.accentColor : Color.secondary
+            )
+            .disabled(!monitor.canSelectForChart(reading.descriptor.key))
+            .help(
+                monitor.isSelectedForChart(reading.descriptor.key)
+                    ? "从历史曲线移除"
+                    : "加入历史曲线"
+            )
             if let value = reading.value, reading.validity == .valid {
                 Text(value, format: .number.precision(.fractionLength(0...1)))
                     .font(.title3.monospacedDigit())

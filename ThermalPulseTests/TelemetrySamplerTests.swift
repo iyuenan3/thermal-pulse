@@ -37,6 +37,10 @@ final class TelemetrySamplerTests: XCTestCase {
         XCTAssertEqual(summary.latestFrame?.thermalState, .fair)
         XCTAssertEqual(summary.series[fanKey]?.statistics.latest, 1_500)
         XCTAssertNil(summary.series[temperatureKey])
+
+        let histories = await sampler.histories(for: [fanKey, temperatureKey])
+        XCTAssertEqual(histories[fanKey]?.map(\.value), [1_500])
+        XCTAssertNil(histories[temperatureKey])
     }
 
     func testStopClearsRunningState() async throws {

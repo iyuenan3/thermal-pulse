@@ -17,9 +17,11 @@
 		300000000000000000000008 /* TelemetryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000009 /* TelemetryModels.swift */; };
 		300000000000000000000009 /* TimeSeriesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000A /* TimeSeriesStore.swift */; };
 		30000000000000000000000A /* TelemetrySampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000B /* TelemetrySampler.swift */; };
+		30000000000000000000000B /* TelemetryPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000C /* TelemetryPresentation.swift */; };
 		300000000000000000000011 /* ThermalPulseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* ThermalPulseApp.swift */; };
 		300000000000000000000012 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* ContentView.swift */; };
 		300000000000000000000013 /* ThermalMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* ThermalMonitorViewModel.swift */; };
+		300000000000000000000016 /* SensorChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* SensorChartView.swift */; };
 		300000000000000000000014 /* libThermalPulseCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 240000000000000000000002 /* libThermalPulseCore.a */; };
 		300000000000000000000015 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000001 /* IOKit.framework */; };
 		300000000000000000000021 /* SMCKeyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000001 /* SMCKeyTests.swift */; };
@@ -31,6 +33,7 @@
 		300000000000000000000027 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000002 /* XCTest.framework */; };
 		300000000000000000000028 /* TimeSeriesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000005 /* TimeSeriesStoreTests.swift */; };
 		300000000000000000000029 /* TelemetrySamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000006 /* TelemetrySamplerTests.swift */; };
+		30000000000000000000002A /* TelemetryPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000007 /* TelemetryPresentationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +57,7 @@
 		200000000000000000000001 /* ThermalPulseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalPulseApp.swift; sourceTree = "<group>"; };
 		200000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		200000000000000000000003 /* ThermalMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalMonitorViewModel.swift; sourceTree = "<group>"; };
+		200000000000000000000004 /* SensorChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorChartView.swift; sourceTree = "<group>"; };
 		210000000000000000000001 /* SMCKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCKey.swift; sourceTree = "<group>"; };
 		210000000000000000000002 /* SMCTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCTypes.swift; sourceTree = "<group>"; };
 		210000000000000000000003 /* SMCValueDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCValueDecoder.swift; sourceTree = "<group>"; };
@@ -65,12 +69,14 @@
 		210000000000000000000009 /* TelemetryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryModels.swift; sourceTree = "<group>"; };
 		21000000000000000000000A /* TimeSeriesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesStore.swift; sourceTree = "<group>"; };
 		21000000000000000000000B /* TelemetrySampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetrySampler.swift; sourceTree = "<group>"; };
+		21000000000000000000000C /* TelemetryPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryPresentation.swift; sourceTree = "<group>"; };
 		220000000000000000000001 /* SMCKeyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCKeyTests.swift; sourceTree = "<group>"; };
 		220000000000000000000002 /* SMCValueDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCValueDecoderTests.swift; sourceTree = "<group>"; };
 		220000000000000000000003 /* SensorClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorClassifierTests.swift; sourceTree = "<group>"; };
 		220000000000000000000004 /* SMCReadAdapterIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCReadAdapterIntegrationTests.swift; sourceTree = "<group>"; };
 		220000000000000000000005 /* TimeSeriesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesStoreTests.swift; sourceTree = "<group>"; };
 		220000000000000000000006 /* TelemetrySamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetrySamplerTests.swift; sourceTree = "<group>"; };
+		220000000000000000000007 /* TelemetryPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryPresentationTests.swift; sourceTree = "<group>"; };
 		230000000000000000000001 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		230000000000000000000002 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
 		240000000000000000000001 /* ThermalPulse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ThermalPulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -143,6 +149,7 @@
 				200000000000000000000001 /* ThermalPulseApp.swift */,
 				200000000000000000000002 /* ContentView.swift */,
 				200000000000000000000003 /* ThermalMonitorViewModel.swift */,
+				200000000000000000000004 /* SensorChartView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -185,6 +192,7 @@
 				210000000000000000000007 /* SMCProbeService.swift */,
 				21000000000000000000000A /* TimeSeriesStore.swift */,
 				21000000000000000000000B /* TelemetrySampler.swift */,
+				21000000000000000000000C /* TelemetryPresentation.swift */,
 			);
 			path = Telemetry;
 			sourceTree = "<group>";
@@ -198,6 +206,7 @@
 				220000000000000000000004 /* SMCReadAdapterIntegrationTests.swift */,
 				220000000000000000000005 /* TimeSeriesStoreTests.swift */,
 				220000000000000000000006 /* TelemetrySamplerTests.swift */,
+				220000000000000000000007 /* TelemetryPresentationTests.swift */,
 			);
 			path = ThermalPulseTests;
 			sourceTree = "<group>";
@@ -313,6 +322,7 @@
 				300000000000000000000011 /* ThermalPulseApp.swift in Sources */,
 				300000000000000000000012 /* ContentView.swift in Sources */,
 				300000000000000000000013 /* ThermalMonitorViewModel.swift in Sources */,
+				300000000000000000000016 /* SensorChartView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -330,6 +340,7 @@
 				300000000000000000000008 /* TelemetryModels.swift in Sources */,
 				300000000000000000000009 /* TimeSeriesStore.swift in Sources */,
 				30000000000000000000000A /* TelemetrySampler.swift in Sources */,
+				30000000000000000000000B /* TelemetryPresentation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,6 +354,7 @@
 				300000000000000000000024 /* SMCReadAdapterIntegrationTests.swift in Sources */,
 				300000000000000000000028 /* TimeSeriesStoreTests.swift in Sources */,
 				300000000000000000000029 /* TelemetrySamplerTests.swift in Sources */,
+				30000000000000000000002A /* TelemetryPresentationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

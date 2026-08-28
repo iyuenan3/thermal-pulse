@@ -19,7 +19,7 @@ struct ThermalPulseApp: App {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Divider()
-                Button("重新探测") {
+                Button("重新枚举") {
                     monitor.refresh()
                 }
                 .disabled(monitor.isScanning)
@@ -35,4 +35,3 @@ struct ThermalPulseApp: App {
         .menuBarExtraStyle(.window)
     }
 }
-

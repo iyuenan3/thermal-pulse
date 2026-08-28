@@ -3,7 +3,7 @@ import Foundation
 public actor TimeSeriesStore {
     public let capacityPerSeries: Int
 
-    private var buffers: [SMCKey: FixedRingBuffer<SensorSamplePoint>] = [:]
+    private var buffers: [SMCKey: SensorRingBuffer] = [:]
     private var descriptors: [SMCKey: SensorDescriptor] = [:]
     private var latestFrame: TelemetryFrame?
 
@@ -30,7 +30,7 @@ public actor TimeSeriesStore {
 
             let key = reading.descriptor.key
             descriptors[key] = reading.descriptor
-            var buffer = buffers[key] ?? FixedRingBuffer(capacity: capacityPerSeries)
+            var buffer = buffers[key] ?? SensorRingBuffer(capacity: capacityPerSeries)
             buffer.append(SensorSamplePoint(timestamp: frame.timestamp, value: value))
             buffers[key] = buffer
         }
@@ -40,25 +40,9 @@ public actor TimeSeriesStore {
         var series: [SMCKey: SensorSeriesSummary] = [:]
 
         for (key, buffer) in buffers {
-            let points = buffer.elements
-            guard let latest = points.last else { continue }
-
-            var minimum = latest.value
-            var maximum = latest.value
-            var total = 0.0
-            for point in points {
-                minimum = min(minimum, point.value)
-                maximum = max(maximum, point.value)
-                total += point.value
-            }
-            let statistics = SensorStatistics(
-                sampleCount: points.count,
-                latest: latest.value,
-                minimum: minimum,
-                maximum: maximum,
-                average: total / Double(points.count)
-            )
-            guard let descriptor = descriptors[key] else { continue }
+            guard let statistics = buffer.statistics,
+                  let descriptor = descriptors[key]
+            else { continue }
             series[key] = SensorSeriesSummary(descriptor: descriptor, statistics: statistics)
         }
 
@@ -72,27 +56,82 @@ public actor TimeSeriesStore {
     public func history(for key: SMCKey) -> [SensorSamplePoint] {
         buffers[key]?.elements ?? []
     }
+
+    public func histories(
+        for keys: [SMCKey],
+        since cutoff: Date? = nil
+    ) -> [SMCKey: [SensorSamplePoint]] {
+        var result: [SMCKey: [SensorSamplePoint]] = [:]
+
+        for key in keys {
+            guard let buffer = buffers[key] else { continue }
+            let points = buffer.elements
+            if let cutoff {
+                result[key] = points.filter { $0.timestamp >= cutoff }
+            } else {
+                result[key] = points
+            }
+        }
+
+        return result
+    }
 }
 
-private struct FixedRingBuffer<Element: Sendable>: Sendable {
+private struct SensorRingBuffer: Sendable {
     let capacity: Int
 
-    private var storage: [Element?]
+    private var storage: [SensorSamplePoint?]
     private var nextWriteIndex = 0
     private(set) var count = 0
+    private var total = 0.0
+    private var minimum: Double?
+    private var maximum: Double?
 
     init(capacity: Int) {
         self.capacity = max(1, capacity)
         storage = Array(repeating: nil, count: max(1, capacity))
     }
 
-    mutating func append(_ element: Element) {
+    mutating func append(_ element: SensorSamplePoint) {
+        let evicted = storage[nextWriteIndex]
+        let needsMinimumRecalculation = evicted?.value == minimum
+        let needsMaximumRecalculation = evicted?.value == maximum
+
+        if let evicted {
+            total -= evicted.value
+        } else {
+            count += 1
+        }
+
         storage[nextWriteIndex] = element
         nextWriteIndex = (nextWriteIndex + 1) % capacity
-        count = min(count + 1, capacity)
+        total += element.value
+
+        if needsMinimumRecalculation || needsMaximumRecalculation {
+            recomputeExtrema()
+        } else {
+            minimum = min(minimum ?? element.value, element.value)
+            maximum = max(maximum ?? element.value, element.value)
+        }
     }
 
-    var elements: [Element] {
+    var statistics: SensorStatistics? {
+        guard count > 0,
+              let latest = storage[(nextWriteIndex - 1 + capacity) % capacity],
+              let minimum,
+              let maximum
+        else { return nil }
+
+        return SensorStatistics(
+            sampleCount: count,
+            latest: latest.value,
+            minimum: minimum,
+            maximum: maximum,
+            average: total / Double(count)
+        )
+    }
+
+    var elements: [SensorSamplePoint] {
         guard count > 0 else { return [] }
 
         if count < capacity {
@@ -100,5 +139,15 @@ private struct FixedRingBuffer<Element: Sendable>: Sendable {
         }
 
         return (storage[nextWriteIndex...] + storage[..<nextWriteIndex]).compactMap { $0 }
+    }
+
+    private mutating func recomputeExtrema() {
+        minimum = nil
+        maximum = nil
+
+        for point in storage.compactMap({ $0 }) {
+            minimum = min(minimum ?? point.value, point.value)
+            maximum = max(maximum ?? point.value, point.value)
+        }
     }
 }
