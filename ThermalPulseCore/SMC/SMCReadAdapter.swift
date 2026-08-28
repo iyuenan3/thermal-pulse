@@ -109,6 +109,12 @@ public final class SMCReadAdapter {
     public func read(_ key: SMCKey) throws -> SMCRawValue {
         let keyMetadata = try metadata(for: key)
 
+        return try read(keyMetadata)
+    }
+
+    public func read(_ keyMetadata: SMCKeyMetadata) throws -> SMCRawValue {
+        let key = keyMetadata.key
+
         var input = TPSMCParamStruct()
         input.key = key.code
         input.keyInfo.dataSize = UInt32(keyMetadata.dataSize)

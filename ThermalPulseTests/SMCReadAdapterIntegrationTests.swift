@@ -42,7 +42,8 @@ final class SMCReadAdapterIntegrationTests: XCTestCase {
 
         print("ThermalPulse read-only evidence: keys=\(keyCount) fans=\(fanCount) \(evidence.joined(separator: " "))")
 
-        let snapshot = try await SMCProbeService().scan()
+        let service = try SMCProbeService()
+        let snapshot = try await service.scan()
         XCTAssertEqual(snapshot.advertisedKeyCount, keyCount)
         XCTAssertEqual(snapshot.enumeratedKeyCount, keyCount)
         XCTAssertEqual(snapshot.fanCount, fanCount)
@@ -55,10 +56,36 @@ final class SMCReadAdapterIntegrationTests: XCTestCase {
             XCTAssertEqual(reading.validity, .valid)
         }
 
+        let samplingKeys = snapshot.readings.compactMap { reading -> SMCKey? in
+            guard reading.validity == .valid else { return nil }
+            switch reading.descriptor.kind {
+            case .fanActualSpeed, .temperatureCandidate:
+                return reading.descriptor.key
+            case .fanMaximumSpeed, .metadata, .raw:
+                return nil
+            }
+        }
+        XCTAssertFalse(samplingKeys.isEmpty)
+
+        let firstBatch = await service.sample(keys: samplingKeys)
+        let secondBatch = await service.sample(keys: samplingKeys)
+        XCTAssertEqual(firstBatch.readings.count, samplingKeys.count)
+        XCTAssertEqual(secondBatch.readings.count, samplingKeys.count)
+
+        for index in 0..<fanCount {
+            let indexCode = String(index, radix: 16, uppercase: true)
+            let actualKey = try XCTUnwrap(SMCKey(rawValue: "F\(indexCode)Ac"))
+            let firstReading = try XCTUnwrap(firstBatch.readings.first { $0.descriptor.key == actualKey })
+            let secondReading = try XCTUnwrap(secondBatch.readings.first { $0.descriptor.key == actualKey })
+            XCTAssertEqual(firstReading.validity, .valid)
+            XCTAssertEqual(secondReading.validity, .valid)
+        }
+
         print(
             "ThermalPulse scan evidence: enumerated=\(snapshot.enumeratedKeyCount) "
                 + "metadata=\(snapshot.metadataReadCount) sampled=\(snapshot.sampledKeyCount) "
-                + "failed=\(snapshot.failedReadCount)"
+                + "failed=\(snapshot.failedReadCount) sampling=\(samplingKeys.count) "
+                + "batchFailures=\(firstBatch.failedReadCount),\(secondBatch.failedReadCount)"
         )
     }
 }

@@ -9,9 +9,11 @@ ThermalPulse 是一个原生 macOS 本地热状态监控工具。目标是像活
 - 原生 SwiftUI 菜单栏 App 与监控窗口壳。
 - 普通权限只读 AppleSMC adapter。
 - 动态 key 和风扇枚举、typed sensor model、数据类型解码与有效性判断。
+- 启动时建立动态采样白名单，之后以 1 Hz 读取有效风扇实际转速和温度候选。
+- 每个传感器最多保存 3600 个内存样本，并展示最新值、最小值、最大值和平均值。
 - 普通逻辑测试，以及需要显式选择的当前 Mac 只读硬件探测测试。
 
-当前不包含持续采样、曲线、SMC 写入、privileged helper、Turbo、签名、安装包或发布版本。
+当前不包含曲线绘制、传感器中文语义确认、SMC 写入、privileged helper、Turbo、签名、安装包或发布版本。
 
 ## 安全边界
 

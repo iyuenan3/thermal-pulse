@@ -22,7 +22,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("ThermalPulse")
                     .font(.largeTitle.bold())
-                Text("普通权限只读探测，不会修改任何 SMC 值")
+                Text("普通权限每秒只读采样，不会修改任何 SMC 值")
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -33,7 +33,7 @@ struct ContentView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Label("重新探测", systemImage: "arrow.clockwise")
+                    Label("重新枚举", systemImage: "arrow.clockwise")
                 }
             }
             .disabled(monitor.isScanning)
@@ -43,13 +43,18 @@ struct ContentView: View {
     @ViewBuilder
     private var summary: some View {
         if let snapshot = monitor.snapshot {
-            Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 8) {
-                GridRow {
-                    metric("SMC keys", value: "\(snapshot.enumeratedKeyCount)")
-                    metric("风扇", value: snapshot.fanCount.map(String.init) ?? "未知")
-                    metric("候选温度", value: "\(monitor.temperatureCandidates.count)")
-                    metric("系统 thermal state", value: thermalStateText)
+            VStack(alignment: .leading, spacing: 10) {
+                Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 8) {
+                    GridRow {
+                        metric("SMC keys", value: "\(snapshot.enumeratedKeyCount)")
+                        metric("风扇", value: snapshot.fanCount.map(String.init) ?? "未知")
+                        metric("候选温度", value: "\(monitor.temperatureCandidates.count)")
+                        metric("系统 thermal state", value: thermalStateText)
+                    }
                 }
+                Text(monitor.statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         } else {
             Text(monitor.statusText)
@@ -119,6 +124,13 @@ struct ContentView: View {
                 Text("\(reading.descriptor.key.rawValue) · \(reading.dataType.description) · \(reading.descriptor.evidence.rawValue)")
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
+                if let statistics = monitor.statistics(for: reading.descriptor.key) {
+                    Text(
+                        "历史 \(statistics.sampleCount) 点 · 最小 \(statistics.minimum, specifier: "%.1f") · 最大 \(statistics.maximum, specifier: "%.1f") · 平均 \(statistics.average, specifier: "%.1f")"
+                    )
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                }
             }
             Spacer()
             if let value = reading.value, reading.validity == .valid {
@@ -134,12 +146,12 @@ struct ContentView: View {
     }
 
     private var thermalStateText: String {
-        switch ProcessInfo.processInfo.thermalState {
+        switch monitor.thermalState {
         case .nominal: "正常"
         case .fair: "注意"
         case .serious: "严重"
         case .critical: "危急"
-        @unknown default: "未知"
+        case .unknown: "未知"
         }
     }
 }
