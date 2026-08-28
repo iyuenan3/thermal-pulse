@@ -1,6 +1,6 @@
 # ThermalPulse · AIREADME
 > macOS 热状态监控与限时 Turbo 散热工具 ｜ 生命周期: active, pre-alpha
-> last-synced: bd5e194 · 2026-08-28
+> last-synced: 083cd38 · 2026-08-28
 
 ## 状态
 
