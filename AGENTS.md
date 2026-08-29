@@ -7,10 +7,10 @@
 - 生命周期：active，pre-alpha。
 - 产品定位：macOS 本地热状态监控工具，提供活动监视器式传感器曲线，以及一次最多 10 分钟的 Turbo 全速散热。
 - 最低系统：macOS 26.0，不支持 macOS 25 及更早版本。
-- 当前已有可构建的原生 SwiftUI App、只读 `SMCReadAdapter`、typed sensor model、1 Hz 动态白名单采样、1 小时内存环形缓冲、无侧栏单页监控窗口、紧凑分组式菜单栏弹窗、菜单栏 P 核温度与全部风扇 RPM、默认风扇和温度曲线、App 侧 Turbo 协调器、固定身份的私有 XPC transport、`SMAppService` 显式注册与升级界面，以及 helper 侧固定 600 秒租约、受限 FanWriteAdapter、持久租约、看门狗、唤醒恢复与故障测试。最终写入版 helper 已完成系统升级和 XPC 状态实连，但没有执行真实 SMC 写入、风扇控制验收、安装产物或发布。
+- 当前已有可构建的原生 SwiftUI App、只读 `SMCReadAdapter`、typed sensor model、1 Hz 动态白名单采样、1 小时内存环形缓冲、无侧栏单页监控窗口、紧凑分组式菜单栏弹窗、菜单栏 P 核温度与全部风扇 RPM、默认风扇和温度曲线、App 侧 Turbo 协调器、固定身份的私有 XPC transport、`SMAppService` 显式注册与升级界面，以及 helper 侧固定 600 秒租约、受限 FanWriteAdapter、持久租约、看门狗、唤醒恢复与故障测试。最终写入版 helper 已完成系统升级和 XPC 状态实连；首次真实短时写入尝试触发读回不一致并安全回退，Turbo 尚未通过，也没有安装产物或发布。
 - 当前 Mac16,7 已用普通权限读回 2 个风扇的实际与最大 RPM，并对 312 个动态采样项完成连续两轮零失败读回；Debug App 已完成 3605 秒真实运行，并承受 14 核 CPU 满载与 12 GiB 内存压力，全程未提前退出或产生错误日志。
 - 已用 312 个序列加速模拟 1 Hz、3601 秒的数据路径并验证容量上限。优化后的最终 Release App 已完成 3605 秒持续运行，取得 60 个无间隔缺口的监督样本，未提前退出且日志为空。加入标记后的无操作 Release 12 分钟基线未复现旧性能台阶。当前 Mac16,7 的 `Tp` 动态温度族平均值已在 35 秒 CPU 负载中从 33.8 °C 升至 75.3 °C；该证据只支持族级 P 核响应，不支持逐 key 核心命名。当前普通测试共 57 项，55 项通过、2 项硬件只读测试按设计跳过、0 项失败；显式 HardwareProbe 为 57 项全部通过。
-- 2026-08-29 已经由用户显式操作完成最终写入版 LaunchDaemon 升级。系统读回 root helper 由 ServiceManagement 管理且 Mach endpoint 活跃，App 与 helper 完成双向签名 XPC 实连并取得无错误 inactive 状态。升级前后租约文件均不存在，风扇模式和 `Ftst` 只读回读保持自动。界面现可进入启动确认，但本轮没有调用 `startTurbo()` 或写 SMC；在另行获得实机写入授权并完成模式、目标、实际 RPM 和恢复读回前，Turbo 仍未通过。
+- 2026-08-30 用户显式授权一次短时 Turbo 实机测试。helper 没有进入 active，而是以 readback mismatch 返回 failed-safe-auto；监控曲线在激活阶段观察到最高约 2234 RPM 的短时上升。失败后租约文件已删除，独立只读复验确认 `F0Md=0`、`F1Md=0`、`Ftst=0`，实际 RPM 分别约为 1351 和 1462，root helper 继续运行。该结果只验收了失败保护后的 automatic 恢复，未验收最大目标、active、主动停止、600 秒到期、崩溃、断连、重启或休眠恢复。
 - 首台验收机是当前 Mac16,7、Apple M4 Pro。它只是首个验证对象，不代表已支持全部 Apple Silicon 机型。
 
 ## 启动顺序

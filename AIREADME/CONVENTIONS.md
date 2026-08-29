@@ -24,10 +24,24 @@
 - 图表候选目录只在全量枚举或手动刷新后筛选、排序并缓存；行级渲染只做常数时间成员判断，禁止为每一行重复处理完整目录。
 - 高级原始温度候选默认折叠，折叠只减少界面节点，不停止后台 1 Hz 采样；用户需要检查原始值时可显式展开。
 - RPM 与摄氏度必须分图显示。图表降采样保留首尾、局部极值和采样间隙，只影响显示点，不改写存储层原始历史。
-- Turbo 使用 helper 持有的绝对截止时间和持久租约；UI 倒计时只是展示，不是安全计时器。
-- 休眠、时间变化和 helper 重启后重新比较截止时间与租约所有权，过期即恢复自动。
+- Turbo 使用 helper 持有的固定 600 秒绝对截止时间、进程内单调截止时间和持久租约；UI 倒计时只是展示，不是安全计时器。wall clock 回拨不能延长当前 helper 进程中的租约。
+- 初始租约必须在任何 SMC 写入前成功持久化。每个风扇必须先把动态索引和已验证模式 key 加入租约，再尝试切手动；`Ftst` 也必须先记录由 ThermalPulse 接管，才能写 1。持久化失败时禁止任何 SMC 写入。
+- 风扇模式 key 只能从本轮动态发现的 `F{i}Md` 或 `F{i}md` 取得，初始状态必须明确读回 automatic。manual、未知值或无法读回都按外部或不确定控制拒绝，不得假设全局 `FS! ` 存在。
+- 最大目标写入必须复制本轮实时 `F{i}Mx` 的已验证原始字节到对应 `F{i}Tg`，不得重新编码调用方数值。active 前必须读回全部手动模式、最大目标和实际 RPM 上升趋势。
+- App 侧 `TurboCoordinator` 只接受无参数 client，不传 RPM、时长或 key；active 响应必须校验开始时间、未来截止时间和不超过 600 秒的租约长度，重复启动不得再次调用 client。
+- 私有 XPC identifier 只从 `ThermalPulseIdentity` 读取，不在 App、helper、plist 和测试中产生可漂移的第二份业务常量。LaunchDaemon plist 的固定值必须用构建产物读回验证。
+- XPC 双方必须在 activate 或 resume 前设置 peer code-signing requirement，约束 Apple 签名锚点、固定 identifier 与从自身有效签名取得的相同 Team ID。签名无效、Team ID 缺失或 requirement 无法构造时直接拒绝，不允许放宽为 ad hoc 或仅 bundle id 校验。
+- XPC payload 使用 `NSSecureCoding`、固定协议版本和有限枚举值。只允许三个无业务参数方法，不得借 reply block 之外的参数传入 RPM、时长或 SMC key。
+- helper executable 和 LaunchDaemon plist 必须随 App bundle 分别位于 `Contents/Resources` 与 `Contents/Library/LaunchDaemons`。构建和布局验证不等于注册、root 启动或管理员批准。
+- helper 升级必须先失效旧 XPC，等待 `SMAppService` 异步注销完成后再注册当前签名版本。升级动作需要独立确认，不得与 `startTurbo()` 合并，也不得用同步注销后立即注册制造竞态。
+- 裸 helper executable 必须嵌入生成的 Info.plist section，使代码签名 identifier 由 `PRODUCT_BUNDLE_IDENTIFIER` 稳定决定。不能只检查 build setting，至少用一次签名产物读回实际 identifier。
+- UI 只有在 stop 返回无错误 inactive 后才显示苹果自动。连接、写入、读回或恢复结果不可信时显示 failed-safe-auto，不把状态查询失败降级成 inactive。
+- 恢复按租约中的风扇反向写 automatic，且只有所有模式明确读回 automatic、实际 RPM 有效、ThermalPulse 接管的 `Ftst` 已清除并读回后，才能删除租约。未知模式不能当成恢复成功。
+- 持有租约的 XPC 连接断开、helper 启动发现旧租约或系统唤醒时立即恢复，不自动续跑。看门狗每秒检查绝对和单调截止时间，任一到期即恢复。
 - 状态机、解析和边界验证优先纯逻辑测试；真实 SMC 写入使用显式人工授权的设备验收。
 - 普通 `ThermalPulse` scheme 的测试默认跳过真实 AppleSMC；只读实机枚举使用显式 `ThermalPulseHardwareProbe` scheme，避免日常测试隐式依赖硬件。
+- P 核摘要只动态聚合有效、有限、摄氏度、`flt` 类型且 key 以 `Tp` 开头的候选。不得硬编码候选表，不得把候选数称为核心数，不得给单个 key 添加具体核心编号；无有效输入时显示未知。
+- 性能归因日志只在界面状态变化、重新枚举和每满 60 个有效样本时记录；字段限于样本数、曲线数量、时间范围、界面布尔状态和系统 thermal state，不记录设备标识或原始 SMC key。
 - 日志默认不记录设备标识和完整原始环境，只记录诊断所需的机型类别、key、数据类型、状态和错误码。
 - 中文文档与界面使用中文标点，不使用破折号。
 - 日期和验收时间使用 `Asia/Shanghai`，星期与日期映射必须由工具计算。

@@ -31,4 +31,4 @@ ThermalPulse 是一款原生 macOS 本地工具，用活动监视器式界面展
 
 ## 生命周期
 
-active，pre-alpha。当前已有可构建的只读监控、持续采样、内存历史、默认风扇和原始温度候选曲线，并在 Mac16,7 上完成普通权限风扇枚举、RPM 读回、Debug 压力运行、Release 性能优化和最终 Release App 3605 秒持续运行。人工界面验收、温度语义、Turbo、helper、安装和发布仍未完成。
+active，pre-alpha。当前已有可构建的只读监控、持续采样、内存历史、默认风扇和原始温度候选曲线，并在 Mac16,7 上完成普通权限风扇枚举、RPM 读回、Debug 压力运行、Release 性能优化和最终 Release App 3605 秒持续运行。App 侧 Turbo 协调器、固定身份的私有 XPC transport，以及 helper 侧固定 600 秒租约、受限动态风扇写入、持久恢复记录、看门狗与故障测试已经实现。最终 Personal Team Debug App 与 helper 均在沙箱外通过 strict 校验，写入版 helper 已完成 ServiceManagement 系统升级、root 启动和双向签名 XPC 实连。2026-08-30 首次短时真实写入尝试因读回不一致未进入 active，失败保护后独立确认全部模式与 `Ftst` 回到 0、实际 RPM 有效且租约已删除。该结果只证明本次失败恢复有效，Turbo 启动、最大目标与主动停止验收仍未完成；到期、崩溃、断连、helper 重启、休眠、卸载和发布也未验收。

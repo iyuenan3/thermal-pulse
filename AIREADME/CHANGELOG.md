@@ -4,6 +4,191 @@
 
 当前已有可执行的只读监控里程碑，尚无 release。
 
+## Unreleased · first short Turbo hardware attempt milestone · 2026-08-30
+
+### Validated
+
+- 用户明确授权一次短时真实 Turbo 测试。启动前专用只读门禁确认两个动态风扇处于 automatic，`Ftst=0`，helper 由 ServiceManagement 管理、以 root 运行且 Mach endpoint 活跃。
+- 激活阶段监控曲线观察到最高约 2234 RPM 的短时上升，但 helper 返回 readback mismatch 与 failed-safe-auto，没有进入 active，也没有自动重试。
+- 失败后持久租约文件已删除。独立 HardwareProbe 读回 `F0Md=0`、`F1Md=0`、`Ftst=0`、`F0Ac=1350.73 RPM`、`F1Ac=1462.07 RPM`，两个目标值已回到苹果自动控制值；root helper 继续运行。
+
+### Not included
+
+- 本里程碑不确认两台风扇同时进入手动模式、目标达到各自 5777 RPM、实际 RPM 达标或 Turbo active。也没有验收主动停止、600 秒到期、App 崩溃、XPC 断开、helper 重启、休眠唤醒、卸载、公证或发布。
+- 下一次真实写入前先增加能区分模式、目标与实际 RPM 门禁的有限诊断；代码和 helper 升级完成后仍需用户再次明确授权。
+
+## Unreleased · signed helper upgrade milestone · 2026-08-29
+
+### Added
+
+- 新增独立的“升级 Turbo helper”确认流程。旧 helper 返回 write-path-unavailable 时，App 先失效旧 XPC，再由 ServiceManagement 替换当前签名版本；升级确认不调用 Turbo。
+- 新增只读升级前后硬件门禁，动态枚举全部风扇模式 key 并确认 `Ftst`，不包含写命令。
+
+### Fixed
+
+- 修正同步 `unregister()` 后立即 `register()` 导致旧服务已移除而新服务未登记的竞态。升级路径改为等待异步注销完成后再注册，见 ADR-017。
+
+### Validated
+
+- 最终 Personal Team Debug App 与 helper 重新构建，并分别在沙箱外通过 deep strict 与 strict 代码签名校验。
+- 用户明确授权升级且不启动 Turbo。系统读回新 helper 由 ServiceManagement 管理、以 root 运行且 Mach endpoint 活跃；App 经双向签名 XPC 取得无错误 inactive 状态并显示“苹果自动”。旧 helper PID 为 43656，新 helper PID 为 54765，证明运行实例已替换。
+- 升级前后 `/Library/Application Support/ThermalPulse/turbo-lease.plist` 均不存在。普通测试共 57 项，55 项通过、2 项实机只读测试按设计跳过、0 项失败；升级后 HardwareProbe 共 57 项、57 项通过、0 项跳过、0 项失败，确认全部动态风扇模式与 `Ftst` 保持 0。
+
+### Not included
+
+- 本里程碑没有调用 `startTurbo()`，没有写 SMC，没有把风扇切入手动，也没有验收最大目标、实际 RPM、到期、崩溃、断连、helper 重启或休眠恢复。卸载、公证、发布仍不在本里程碑内。
+
+## Unreleased · Turbo safety engine source milestone · 2026-08-29
+
+### Added
+
+- 新增 helper 侧 `SMCFanWriteAdapter`，动态枚举所有风扇，只接受实时验证的逐风扇模式、目标、最大值和实际 RPM key。写入接口仍不接受业务 key、RPM 或时长。
+- 新增 root-owned 最小持久租约、固定 600 秒安全控制器、每连接 owner、1 秒看门狗、进程内单调截止时间、唤醒恢复和 helper 启动旧租约恢复。
+- 新增模式与最大目标读回、实际 RPM 上升门禁、部分激活回滚、恢复重试和 `Ftst` 所有权记录。租约先于任何 SMC 写入，每个风扇也先记录接管范围再切手动。
+
+### Changed
+
+- App 的 `TurboXPCClient` 改为生命周期内持久连接，启动、停止和状态查询超时分别为 70 秒、12 秒和 3 秒。连接退出、断开、失效或超时会触发 helper 的所有者恢复路径。
+- App 侧协调器保留 helper 返回的安全禁用与 failed-safe-auto 原因，不把有效失败状态改写成通用无效响应。
+- 菜单栏头部和 Turbo 状态 badge 只有在无错误 inactive 时才显示苹果自动；helper 不可用、外部控制或状态异常时改为不接管、外部控制或待确认文案。
+
+### Validated
+
+- 用户此前已显式完成 LaunchDaemon 注册和系统允许。系统读回旧安全 stub 由 ServiceManagement 管理、root 运行且 XPC 活跃；App 实际收到 write-path-unavailable，证明注册与双向签名 XPC 通路可达。旧 runtime 没有 SMC 写入能力。
+- 当前 Mac16,7 的显式只读探针实际通过，读到 3337 个 key、2 个风扇、315 个采样候选和连续两批 312 路零失败采样。`F0Md`、`F1Md`、`Ftst` 为 1 字节 `ui8 ` 且当前值为 0；`F0Tg`、`F1Tg`、`F0Mx`、`F1Mx` 为 4 字节 `flt `，两个实时最大值均为 5777 RPM；`FS! ` 不存在。全程没有写 SMC。
+- 未签名 Debug 构建通过。普通测试共 55 项，54 项通过、1 项真实硬件探针按设计跳过、0 项失败，覆盖外部和未知模式拒绝、租约先行、动态多风扇、读回、回滚、到期、wall clock 回拨、断连、唤醒、重启与恢复失败。
+- 最终 Personal Team Debug 构建由 Xcode 成功产出。同一产物中的 App 与 helper 均在沙箱外通过独立 strict 校验；沙箱内出现的 `CSSMERR_TP_NOT_TRUSTED` 已确认是受限信任服务造成的假失败。该产物没有用于升级已注册 helper。
+
+### Not included
+
+- 本里程碑没有替换、重新注册、重启或卸载系统中现有 helper，没有执行真实 SMC 写入，没有把风扇切入手动，也没有完成 Turbo 或恢复的实机验收。新 helper 升级和真实写入仍是独立门禁。
+
+## Unreleased · helper registration UI milestone · 2026-08-29
+
+### Added
+
+- 新增 `SMAppService` LaunchDaemon 状态适配器、App 侧注册协调器、显式注册确认弹窗、待批准系统设置入口和重新检查状态操作。
+- 注册状态与 XPC 状态分层：只有系统状态为 enabled 才查询 helper；App 启动和控件出现只读查询，不自动注册。
+
+### Fixed
+
+- 修正首次 `SMAppService.Status.notFound` 的解释。该状态可表示系统尚未记录服务，现与 notRegistered 一样展示显式注册入口，不再误报 App 包内缺少 helper 配置。
+
+### Validated
+
+- 未签名 Debug 测试构建与 Personal Team 签名 Debug 构建通过。普通测试共 43 项，42 项通过、1 项真实硬件探针按设计跳过、0 项失败。
+- 签名 Debug App 的自动化可访问性读回实际显示“系统尚未登记 Turbo helper”和 `turbo.helper.register` 按钮；没有点击最终注册确认。
+- 当前 Personal Team Debug App 通过代码签名严格校验，但未满足 notarized 签名 requirement，`spctl` 评估未通过。实际 LaunchDaemon 注册结果仍未知。
+
+### Not included
+
+- 本里程碑没有实际调用 `SMAppService.register()`，没有注册、批准、安装或启动 LaunchDaemon，没有完成双向 XPC 实连，也没有 SMC 写入、风扇控制或 Turbo 恢复验收。
+
+## Unreleased · Personal Team signing baseline milestone · 2026-08-29
+
+### Changed
+
+- 为 App 与 helper 的 Debug、Release 和 HardwareProbe configuration 配置同一个免费 Personal Team，继续使用 Automatic Signing。AIREADME 不记录实际 Team ID、证书材料或账号凭证。
+
+### Validated
+
+- Xcode 26.6 在当前开发机完成本机 Debug 签名构建，实际读回 App identifier 为 `io.github.iyuenan3.thermalpulse`、helper identifier 为 `io.github.iyuenan3.thermalpulse.helper`，双方 Team ID 相同且非空。
+- App 与 helper 均由同一 Apple Development 身份和完整 Apple 证书链签名，App bundle 通过 deep strict 验证。
+- 普通测试共 39 项，38 项通过、1 项真实硬件探针按设计跳过、0 项失败。
+
+### Not included
+
+- 本里程碑没有调用 `SMAppService.register()`，没有注册、安装或启动 LaunchDaemon，没有请求管理员批准，没有验证真实双向 XPC 服务连接，也没有 SMC 写入、风扇控制或 Turbo 恢复验收。
+
+## Unreleased · helper and XPC skeleton milestone · 2026-08-29
+
+### Added
+
+- 固定 App bundle identifier 为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 为 `io.github.iyuenan3.thermalpulse.helper`。
+- 新增协议 v1 `NSSecureCoding` payload、实际 `TurboXPCClient`、固定 LaunchDaemon plist 和 `ThermalPulseHelper` executable target。
+- App 与 helper 新增对称 peer requirement，均校验 Apple 签名锚点、固定 identifier 和从自身有效签名取得的相同 Team ID。未签名构建拒绝连接。
+- helper 当前只返回 write-path-unavailable，三个 XPC 方法均没有 RPM、时长或 SMC key 业务参数。
+
+### Validated
+
+- Debug 与 Release 未签名构建通过。构建产物读回 App 固定 bundle identifier，并确认 helper 与 LaunchDaemon plist 分别位于 `Contents/Resources` 和 `Contents/Library/LaunchDaemons`，`BundleProgram`、`Label` 与 Mach service 相互一致。
+- helper 嵌入生成的 Info.plist section 后，独立 ad hoc 构建实际读回 App 和 helper 的代码签名 identifier 均与冻结值一致，App 通过 deep strict 签名校验。ad hoc 签名没有 Team ID，因此仍按设计拒绝 XPC，不替代 Personal Team 实连。
+- 普通测试共 39 项，38 项通过、1 项真实硬件探针按设计跳过、0 项失败。新增覆盖固定身份、签名 requirement 注入防护、安全编码 round trip、协议版本拒绝和 XPC interface 构造。
+- 源码扫描确认没有 `SMAppService.register()`、helper 注册调用或 SMC 写入入口。
+
+### Not included
+
+- 本里程碑没有用 Personal Team 完成签名实连，没有注册或启动 LaunchDaemon，没有请求管理员批准，也没有 SMC 写入、真实风扇控制或 Turbo 恢复验收。
+
+## Unreleased · app-side Turbo controls milestone · 2026-08-29
+
+### Added
+
+- 新增无参数 `TurboClient`、`TurboCoordinator`、固定 600 秒租约校验和有限错误模型。
+- 主窗口与菜单栏弹窗新增共享 Turbo 控件，包含启动确认、展示型倒计时、立即恢复自动、处理中和失败状态。
+- 新增 `UnavailableTurboClient`，在 helper 尚未配置时明确禁用控件并说明原因。
+
+### Validated
+
+- Turbo 状态机测试覆盖 helper 不可用、有效 600 秒租约、超长租约拒绝、外部控制器拒绝、重复启动不续时、停止成功、恢复失败和活跃期通信失败不误报自动模式。
+- Debug 与 Release 构建通过。完整普通测试共 33 项，32 项通过、1 项真实硬件探针按设计跳过、0 项失败，不执行 SMC 写入。
+
+### Not included
+
+- 本里程碑不包含 helper target、bundle identity、签名 requirement、Mach service、SMC 写入、系统批准或真实风扇控制。由于未签名 App 尚无可寻址 bundle identifier，Turbo 卡片的本机自动化视觉检查未完成。
+
+## Unreleased · single-panel and menu popover redesign milestone · 2026-08-29
+
+### Changed
+
+- 移除主窗口侧栏，将 P 核温度主状态、风扇与采样摘要、系统 thermal state、趋势和可展开的“传感器与曲线”合并为单页。
+- 菜单栏弹窗改为蓝色温度主状态、紧凑分组信息行和底部“打开监控窗口”主按钮；只借鉴用户指定参考的视觉层级，不加入电量控制、设备序列号或其他无关功能。
+- 图表卡片统一使用轻量材质、圆角边框和弱阴影，与菜单栏弹窗保持一致的信息层级。
+
+### Validated
+
+- Debug 与 Release 构建均成功。新 Release App 通过 LaunchServices 启动，菜单栏状态项实际显示 P 核温度和双风扇 RPM。
+- 无侧栏主窗口完成本机截图检查，温度主状态、紧凑信息行、热状态提示和趋势区域在实际窗口尺寸内可见。
+
+### Not included
+
+- 自动化工具因 bundle identifier 尚未冻结而无法稳定寻址菜单栏弹窗，弹窗点击和完整交互仍等待用户人工确认。本里程碑不包含 SMC 写入、helper、Turbo、签名、安装或 release。
+
+## Unreleased · monitoring product design and P-core summary milestone · 2026-08-29
+
+### Added
+
+- 主窗口重构为原生侧栏结构，概览页集中展示 P 核温度族、动态风扇 RPM、系统 thermal state 和趋势图，传感器页按证据分组展示读数。
+- 菜单栏标题直接显示紧凑 P 核平均温度和全部已枚举风扇 RPM；弹出面板逐风扇显示完整读数，并保留重新枚举、重开窗口和退出入口。
+- 新增动态 `Tp` 温度族策略，只聚合有效 `flt` 摄氏度候选，输出平均值、最高值、最高 key 和候选数量；默认温度曲线优先选择族内最高 key。
+
+### Validated
+
+- 新增 P 核温度族纯逻辑测试，覆盖过滤、平均值、最高值和无有效输入时的未知状态；普通测试全部通过，Release 构建成功。
+- 当前 Mac16,7 普通权限只读基线取得 102 个有效 `Tp` 候选，平均 33.8 °C、最高 75.6 °C；35 秒 14 线程负载期间平均升至 75.3 °C、最高升至 94.5 °C。两个风扇同时保持正常只读回传，负载进程自行退出。
+- 新 Release 主窗口完成本机截图检查，并根据实际宽度修正三列卡片布局和双风扇数值截断。通过 LaunchServices 标准启动后，顶部状态项实际显示 `P44° F1357/1486`。
+
+### Not included
+
+- 本里程碑不确认 102 个候选分别对应哪些具体核心，也不代表其他 Apple Silicon 机型已验证。菜单栏弹出面板和传感器页仍等待用户人工验收，不包含 SMC 写入、helper、Turbo、签名、安装或 release。
+
+## Unreleased · local performance attribution markers milestone · 2026-08-29
+
+### Added
+
+- 新增 `ThermalPulse:MonitoringPerformance` 本地统一日志标记，覆盖监控窗口、菜单栏重开请求、原始候选展开与收起、曲线选择、时间范围和重新枚举。
+- 持续采样每满 60 个有效样本写一条状态快照，便于与一分钟间隔的 CPU 和内存样本对齐。
+
+### Validated
+
+- 普通测试通过。短暂启动 Debug App 后，macOS 统一日志实际读回窗口显示、刷新开始和刷新完成事件，完成事件中的默认曲线数量为 3。
+- 标记只包含样本数、曲线数量、时间范围、界面状态和系统 thermal state，不包含设备标识或原始 SMC key。
+- Release App 无操作运行 12 分钟，取得 13 个 `top` 样本和 13 条连续每分钟状态快照。CPU 均值为 6.52%，范围为 4.9% 至 10.7%；内存均值为 211.62 MiB，范围为 206 至 215 MiB。本轮没有复现第 10 分钟后的持续台阶。
+
+### Not included
+
+- 本里程碑尚未完成 Release 一小时标记长测和单变量交互阶段，因此已知性能台阶仍未归因。也不包含人工曲线验收、温度语义、SMC 写入、helper、Turbo、签名、安装或 release。
+
 ## Unreleased · read-only Release soak and monitoring UX milestone · 2026-08-29
 
 ### Added
