@@ -1,5 +1,62 @@
 import Foundation
 
+public struct TemperatureFamilySummary: Equatable, Sendable {
+    public let sensorCount: Int
+    public let average: Double
+    public let maximum: Double
+    public let hottestKey: SMCKey
+
+    public init(
+        sensorCount: Int,
+        average: Double,
+        maximum: Double,
+        hottestKey: SMCKey
+    ) {
+        self.sensorCount = sensorCount
+        self.average = average
+        self.maximum = maximum
+        self.hottestKey = hottestKey
+    }
+}
+
+public enum PerformanceCoreTemperaturePolicy {
+    public static func matchingReadings(from readings: [SensorReading]) -> [SensorReading] {
+        readings.filter { reading in
+            reading.validity == .valid
+                && reading.descriptor.kind == .temperatureCandidate
+                && reading.descriptor.unit == .celsius
+                && reading.descriptor.key.rawValue.hasPrefix("Tp")
+                && normalizedDataType(reading.dataType) == "flt"
+                && reading.value?.isFinite == true
+        }.sorted { $0.descriptor.key < $1.descriptor.key }
+    }
+
+    public static func summary(from readings: [SensorReading]) -> TemperatureFamilySummary? {
+        let candidates = matchingReadings(from: readings).compactMap { reading -> (key: SMCKey, value: Double)? in
+            guard let value = reading.value else { return nil }
+            return (key: reading.descriptor.key, value: value)
+        }
+
+        guard let hottest = candidates.max(by: { lhs, rhs in
+            if lhs.value == rhs.value { return lhs.key > rhs.key }
+            return lhs.value < rhs.value
+        }) else {
+            return nil
+        }
+
+        return TemperatureFamilySummary(
+            sensorCount: candidates.count,
+            average: candidates.reduce(0) { $0 + $1.value } / Double(candidates.count),
+            maximum: hottest.value,
+            hottestKey: hottest.key
+        )
+    }
+
+    private static func normalizedDataType(_ dataType: SMCDataType) -> String {
+        dataType.normalized.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 public enum SensorSelectionPolicy {
     public static func defaultKeys(
         from readings: [SensorReading],
@@ -19,7 +76,8 @@ public enum SensorSelectionPolicy {
         var selectedKeys = Set(fanKeys.prefix(limit))
         guard selectedKeys.count < limit else { return selectedKeys }
 
-        let hottestTemperatureKey = readings
+        let hottestTemperatureKey = PerformanceCoreTemperaturePolicy.summary(from: readings)?.hottestKey
+            ?? readings
             .filter {
                 $0.validity == .valid
                     && $0.descriptor.kind == .temperatureCandidate

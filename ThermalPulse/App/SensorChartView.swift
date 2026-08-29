@@ -28,8 +28,8 @@ struct SensorHistoryCharts: View {
 
             if !temperatureSeries.isEmpty {
                 SensorHistoryChart(
-                    title: "原始温度候选",
-                    subtitle: "仅显示 SMC key，尚未确认部件语义",
+                    title: "温度趋势",
+                    subtitle: "Tp 前缀按 P 核传感器族理解，单条曲线保留原始 SMC key",
                     unit: .celsius,
                     series: temperatureSeries,
                     window: window
@@ -100,8 +100,16 @@ private struct SensorHistoryChart: View {
             }
             .frame(height: 230)
         }
-        .padding(14)
-        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .padding(16)
+        .background(
+            .regularMaterial,
+            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.08), radius: 12, y: 5)
     }
 
     private func makeRenderedPoints(pointBudget: Int) -> [RenderedChartPoint] {

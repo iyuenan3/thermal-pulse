@@ -18,12 +18,18 @@
 		300000000000000000000009 /* TimeSeriesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000A /* TimeSeriesStore.swift */; };
 		30000000000000000000000A /* TelemetrySampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000B /* TelemetrySampler.swift */; };
 		30000000000000000000000B /* TelemetryPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000C /* TelemetryPresentation.swift */; };
+		30000000000000000000000C /* TurboCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000D /* TurboCoordinator.swift */; };
+		30000000000000000000000D /* TurboXPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000E /* TurboXPCProtocol.swift */; };
+		30000000000000000000000E /* TurboSafetyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000F /* TurboSafetyController.swift */; };
 		300000000000000000000011 /* ThermalPulseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* ThermalPulseApp.swift */; };
 		300000000000000000000012 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* ContentView.swift */; };
 		300000000000000000000013 /* ThermalMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* ThermalMonitorViewModel.swift */; };
 		300000000000000000000016 /* SensorChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* SensorChartView.swift */; };
+		300000000000000000000017 /* TurboControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000005 /* TurboControlView.swift */; };
+		300000000000000000000018 /* TurboXPCClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* TurboXPCClient.swift */; };
 		300000000000000000000014 /* libThermalPulseCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 240000000000000000000002 /* libThermalPulseCore.a */; };
 		300000000000000000000015 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000001 /* IOKit.framework */; };
+		300000000000000000000019 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000003 /* Security.framework */; };
 		300000000000000000000021 /* SMCKeyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000001 /* SMCKeyTests.swift */; };
 		300000000000000000000022 /* SMCValueDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000002 /* SMCValueDecoderTests.swift */; };
 		300000000000000000000023 /* SensorClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000003 /* SensorClassifierTests.swift */; };
@@ -34,6 +40,19 @@
 		300000000000000000000028 /* TimeSeriesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000005 /* TimeSeriesStoreTests.swift */; };
 		300000000000000000000029 /* TelemetrySamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000006 /* TelemetrySamplerTests.swift */; };
 		30000000000000000000002A /* TelemetryPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000007 /* TelemetryPresentationTests.swift */; };
+		30000000000000000000002B /* TurboCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000008 /* TurboCoordinatorTests.swift */; };
+		30000000000000000000002C /* TurboXPCProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220000000000000000000009 /* TurboXPCProtocolTests.swift */; };
+		30000000000000000000002D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000003 /* Security.framework */; };
+		30000000000000000000002E /* TurboSafetyControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22000000000000000000000A /* TurboSafetyControllerTests.swift */; };
+		300000000000000000000031 /* ThermalPulseHelperMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250000000000000000000001 /* ThermalPulseHelperMain.swift */; };
+		300000000000000000000032 /* TurboHelperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250000000000000000000002 /* TurboHelperService.swift */; };
+		300000000000000000000033 /* libThermalPulseCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 240000000000000000000002 /* libThermalPulseCore.a */; };
+		300000000000000000000034 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000003 /* Security.framework */; };
+		300000000000000000000035 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 230000000000000000000001 /* IOKit.framework */; };
+		300000000000000000000036 /* SMCFanWriteAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250000000000000000000003 /* SMCFanWriteAdapter.swift */; };
+		300000000000000000000037 /* TurboLeaseFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250000000000000000000004 /* TurboLeaseFileStore.swift */; };
+		300000000000000000000040 /* ThermalPulseHelper in Copy Helper */ = {isa = PBXBuildFile; fileRef = 240000000000000000000004 /* ThermalPulseHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		300000000000000000000041 /* io.github.iyuenan3.thermalpulse.helper.plist in Copy LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* io.github.iyuenan3.thermalpulse.helper.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,13 +70,55 @@
 			remoteGlobalIDString = 600000000000000000000002;
 			remoteInfo = ThermalPulseCore;
 		};
+		920000000000000000000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 900000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 600000000000000000000004;
+			remoteInfo = ThermalPulseHelper;
+		};
+		920000000000000000000004 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 900000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 600000000000000000000002;
+			remoteInfo = ThermalPulseCore;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		500000000000000000000031 /* Copy Helper */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (
+				300000000000000000000040 /* ThermalPulseHelper in Copy Helper */,
+			);
+			name = "Copy Helper";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		500000000000000000000032 /* Copy LaunchDaemon Plist */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LaunchDaemons;
+			dstSubfolderSpec = 1;
+			files = (
+				300000000000000000000041 /* io.github.iyuenan3.thermalpulse.helper.plist in Copy LaunchDaemon Plist */,
+			);
+			name = "Copy LaunchDaemon Plist";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		200000000000000000000001 /* ThermalPulseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalPulseApp.swift; sourceTree = "<group>"; };
 		200000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		200000000000000000000003 /* ThermalMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalMonitorViewModel.swift; sourceTree = "<group>"; };
 		200000000000000000000004 /* SensorChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorChartView.swift; sourceTree = "<group>"; };
+		200000000000000000000005 /* TurboControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboControlView.swift; sourceTree = "<group>"; };
+		200000000000000000000006 /* TurboXPCClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboXPCClient.swift; sourceTree = "<group>"; };
+		200000000000000000000007 /* io.github.iyuenan3.thermalpulse.helper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = io.github.iyuenan3.thermalpulse.helper.plist; sourceTree = "<group>"; };
 		210000000000000000000001 /* SMCKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCKey.swift; sourceTree = "<group>"; };
 		210000000000000000000002 /* SMCTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCTypes.swift; sourceTree = "<group>"; };
 		210000000000000000000003 /* SMCValueDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCValueDecoder.swift; sourceTree = "<group>"; };
@@ -70,6 +131,9 @@
 		21000000000000000000000A /* TimeSeriesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesStore.swift; sourceTree = "<group>"; };
 		21000000000000000000000B /* TelemetrySampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetrySampler.swift; sourceTree = "<group>"; };
 		21000000000000000000000C /* TelemetryPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryPresentation.swift; sourceTree = "<group>"; };
+		21000000000000000000000D /* TurboCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboCoordinator.swift; sourceTree = "<group>"; };
+		21000000000000000000000E /* TurboXPCProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboXPCProtocol.swift; sourceTree = "<group>"; };
+		21000000000000000000000F /* TurboSafetyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboSafetyController.swift; sourceTree = "<group>"; };
 		220000000000000000000001 /* SMCKeyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCKeyTests.swift; sourceTree = "<group>"; };
 		220000000000000000000002 /* SMCValueDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCValueDecoderTests.swift; sourceTree = "<group>"; };
 		220000000000000000000003 /* SensorClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorClassifierTests.swift; sourceTree = "<group>"; };
@@ -77,11 +141,20 @@
 		220000000000000000000005 /* TimeSeriesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesStoreTests.swift; sourceTree = "<group>"; };
 		220000000000000000000006 /* TelemetrySamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetrySamplerTests.swift; sourceTree = "<group>"; };
 		220000000000000000000007 /* TelemetryPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryPresentationTests.swift; sourceTree = "<group>"; };
+		220000000000000000000008 /* TurboCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboCoordinatorTests.swift; sourceTree = "<group>"; };
+		220000000000000000000009 /* TurboXPCProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboXPCProtocolTests.swift; sourceTree = "<group>"; };
+		22000000000000000000000A /* TurboSafetyControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboSafetyControllerTests.swift; sourceTree = "<group>"; };
 		230000000000000000000001 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		230000000000000000000002 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		230000000000000000000003 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		240000000000000000000001 /* ThermalPulse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ThermalPulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		240000000000000000000002 /* libThermalPulseCore.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libThermalPulseCore.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		240000000000000000000003 /* ThermalPulseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThermalPulseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		240000000000000000000004 /* ThermalPulseHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ThermalPulseHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		250000000000000000000001 /* ThermalPulseHelperMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalPulseHelperMain.swift; sourceTree = "<group>"; };
+		250000000000000000000002 /* TurboHelperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboHelperService.swift; sourceTree = "<group>"; };
+		250000000000000000000003 /* SMCFanWriteAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCFanWriteAdapter.swift; sourceTree = "<group>"; };
+		250000000000000000000004 /* TurboLeaseFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboLeaseFileStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +164,7 @@
 			files = (
 				300000000000000000000014 /* libThermalPulseCore.a in Frameworks */,
 				300000000000000000000015 /* IOKit.framework in Frameworks */,
+				300000000000000000000019 /* Security.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,6 +182,17 @@
 				300000000000000000000025 /* libThermalPulseCore.a in Frameworks */,
 				300000000000000000000026 /* IOKit.framework in Frameworks */,
 				300000000000000000000027 /* XCTest.framework in Frameworks */,
+				30000000000000000000002D /* Security.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		500000000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				300000000000000000000033 /* libThermalPulseCore.a in Frameworks */,
+				300000000000000000000034 /* Security.framework in Frameworks */,
+				300000000000000000000035 /* IOKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +204,7 @@
 			children = (
 				400000000000000000000003 /* ThermalPulse */,
 				400000000000000000000005 /* ThermalPulseCore */,
+				40000000000000000000000C /* ThermalPulseHelper */,
 				400000000000000000000009 /* ThermalPulseTests */,
 				40000000000000000000000A /* Frameworks */,
 				400000000000000000000002 /* Products */,
@@ -131,6 +217,7 @@
 				240000000000000000000001 /* ThermalPulse.app */,
 				240000000000000000000002 /* libThermalPulseCore.a */,
 				240000000000000000000003 /* ThermalPulseTests.xctest */,
+				240000000000000000000004 /* ThermalPulseHelper */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -139,6 +226,7 @@
 			isa = PBXGroup;
 			children = (
 				400000000000000000000004 /* App */,
+				40000000000000000000000D /* Resources */,
 			);
 			path = ThermalPulse;
 			sourceTree = "<group>";
@@ -150,6 +238,8 @@
 				200000000000000000000002 /* ContentView.swift */,
 				200000000000000000000003 /* ThermalMonitorViewModel.swift */,
 				200000000000000000000004 /* SensorChartView.swift */,
+				200000000000000000000005 /* TurboControlView.swift */,
+				200000000000000000000006 /* TurboXPCClient.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -160,6 +250,7 @@
 				400000000000000000000006 /* Models */,
 				400000000000000000000007 /* SMC */,
 				400000000000000000000008 /* Telemetry */,
+				40000000000000000000000B /* Turbo */,
 			);
 			path = ThermalPulseCore;
 			sourceTree = "<group>";
@@ -207,8 +298,21 @@
 				220000000000000000000005 /* TimeSeriesStoreTests.swift */,
 				220000000000000000000006 /* TelemetrySamplerTests.swift */,
 				220000000000000000000007 /* TelemetryPresentationTests.swift */,
+				220000000000000000000008 /* TurboCoordinatorTests.swift */,
+				220000000000000000000009 /* TurboXPCProtocolTests.swift */,
+				22000000000000000000000A /* TurboSafetyControllerTests.swift */,
 			);
 			path = ThermalPulseTests;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000B /* Turbo */ = {
+			isa = PBXGroup;
+			children = (
+				21000000000000000000000D /* TurboCoordinator.swift */,
+				21000000000000000000000E /* TurboXPCProtocol.swift */,
+				21000000000000000000000F /* TurboSafetyController.swift */,
+			);
+			path = Turbo;
 			sourceTree = "<group>";
 		};
 		40000000000000000000000A /* Frameworks */ = {
@@ -216,8 +320,28 @@
 			children = (
 				230000000000000000000001 /* IOKit.framework */,
 				230000000000000000000002 /* XCTest.framework */,
+				230000000000000000000003 /* Security.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000C /* ThermalPulseHelper */ = {
+			isa = PBXGroup;
+			children = (
+				250000000000000000000001 /* ThermalPulseHelperMain.swift */,
+				250000000000000000000002 /* TurboHelperService.swift */,
+				250000000000000000000003 /* SMCFanWriteAdapter.swift */,
+				250000000000000000000004 /* TurboLeaseFileStore.swift */,
+			);
+			path = ThermalPulseHelper;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000007 /* io.github.iyuenan3.thermalpulse.helper.plist */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -230,11 +354,14 @@
 				500000000000000000000011 /* Sources */,
 				500000000000000000000001 /* Frameworks */,
 				500000000000000000000021 /* Resources */,
+				500000000000000000000031 /* Copy Helper */,
+				500000000000000000000032 /* Copy LaunchDaemon Plist */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				910000000000000000000001 /* PBXTargetDependency */,
+				910000000000000000000003 /* PBXTargetDependency */,
 			);
 			name = ThermalPulse;
 			productName = ThermalPulse;
@@ -276,6 +403,24 @@
 			productReference = 240000000000000000000003 /* ThermalPulseTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		600000000000000000000004 /* ThermalPulseHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 800000000000000000000005 /* Build configuration list for PBXNativeTarget "ThermalPulseHelper" */;
+			buildPhases = (
+				500000000000000000000014 /* Sources */,
+				500000000000000000000004 /* Frameworks */,
+				500000000000000000000024 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				910000000000000000000004 /* PBXTargetDependency */,
+			);
+			name = ThermalPulseHelper;
+			productName = ThermalPulseHelper;
+			productReference = 240000000000000000000004 /* ThermalPulseHelper */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -289,6 +434,7 @@
 					600000000000000000000001 = { CreatedOnToolsVersion = 26.6; };
 					600000000000000000000002 = { CreatedOnToolsVersion = 26.6; };
 					600000000000000000000003 = { CreatedOnToolsVersion = 26.6; TestTargetID = 600000000000000000000001; };
+					600000000000000000000004 = { CreatedOnToolsVersion = 26.6; };
 				};
 			};
 			buildConfigurationList = 800000000000000000000001 /* Build configuration list for PBXProject "ThermalPulse" */;
@@ -304,6 +450,7 @@
 				600000000000000000000001 /* ThermalPulse */,
 				600000000000000000000002 /* ThermalPulseCore */,
 				600000000000000000000003 /* ThermalPulseTests */,
+				600000000000000000000004 /* ThermalPulseHelper */,
 			);
 		};
 /* End PBXProject section */
@@ -312,6 +459,7 @@
 		500000000000000000000021 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		500000000000000000000022 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		500000000000000000000023 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		500000000000000000000024 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -323,6 +471,8 @@
 				300000000000000000000012 /* ContentView.swift in Sources */,
 				300000000000000000000013 /* ThermalMonitorViewModel.swift in Sources */,
 				300000000000000000000016 /* SensorChartView.swift in Sources */,
+				300000000000000000000017 /* TurboControlView.swift in Sources */,
+				300000000000000000000018 /* TurboXPCClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -341,6 +491,9 @@
 				300000000000000000000009 /* TimeSeriesStore.swift in Sources */,
 				30000000000000000000000A /* TelemetrySampler.swift in Sources */,
 				30000000000000000000000B /* TelemetryPresentation.swift in Sources */,
+				30000000000000000000000C /* TurboCoordinator.swift in Sources */,
+				30000000000000000000000D /* TurboXPCProtocol.swift in Sources */,
+				30000000000000000000000E /* TurboSafetyController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -355,6 +508,20 @@
 				300000000000000000000028 /* TimeSeriesStoreTests.swift in Sources */,
 				300000000000000000000029 /* TelemetrySamplerTests.swift in Sources */,
 				30000000000000000000002A /* TelemetryPresentationTests.swift in Sources */,
+				30000000000000000000002B /* TurboCoordinatorTests.swift in Sources */,
+				30000000000000000000002C /* TurboXPCProtocolTests.swift in Sources */,
+				30000000000000000000002E /* TurboSafetyControllerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		500000000000000000000014 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				300000000000000000000031 /* ThermalPulseHelperMain.swift in Sources */,
+				300000000000000000000032 /* TurboHelperService.swift in Sources */,
+				300000000000000000000036 /* SMCFanWriteAdapter.swift in Sources */,
+				300000000000000000000037 /* TurboLeaseFileStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -363,21 +530,26 @@
 /* Begin PBXTargetDependency section */
 		910000000000000000000001 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 600000000000000000000002 /* ThermalPulseCore */; targetProxy = 920000000000000000000001 /* PBXContainerItemProxy */; };
 		910000000000000000000002 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 600000000000000000000002 /* ThermalPulseCore */; targetProxy = 920000000000000000000002 /* PBXContainerItemProxy */; };
+		910000000000000000000003 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 600000000000000000000004 /* ThermalPulseHelper */; targetProxy = 920000000000000000000003 /* PBXContainerItemProxy */; };
+		910000000000000000000004 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 600000000000000000000002 /* ThermalPulseCore */; targetProxy = 920000000000000000000004 /* PBXContainerItemProxy */; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		700000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = Debug; };
 		700000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = Release; };
 		700000000000000000000003 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG THERMALPULSE_HARDWARE_TESTS"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = HardwareProbe; };
-		700000000000000000000011 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; COMBINE_HIDPI_IMAGES = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = Debug; };
-		700000000000000000000012 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; COMBINE_HIDPI_IMAGES = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = Release; };
-		700000000000000000000013 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; COMBINE_HIDPI_IMAGES = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = HardwareProbe; };
+		700000000000000000000011 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = Debug; };
+		700000000000000000000012 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = Release; };
+		700000000000000000000013 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = HardwareProbe; };
 		700000000000000000000021 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {MACH_O_TYPE = staticlib; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = Debug; };
 		700000000000000000000022 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {MACH_O_TYPE = staticlib; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = Release; };
 		700000000000000000000023 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {MACH_O_TYPE = staticlib; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = HardwareProbe; };
-		700000000000000000000031 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = Debug; };
-		700000000000000000000032 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = Release; };
-		700000000000000000000033 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = ""; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = HardwareProbe; };
+		700000000000000000000031 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = Debug; };
+		700000000000000000000032 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = Release; };
+		700000000000000000000033 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; TEST_HOST = ""; }; name = HardwareProbe; };
+		700000000000000000000041 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CREATE_INFOPLIST_SECTION_IN_BINARY = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse.helper; PRODUCT_NAME = ThermalPulseHelper; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = Debug; };
+		700000000000000000000042 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CREATE_INFOPLIST_SECTION_IN_BINARY = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse.helper; PRODUCT_NAME = ThermalPulseHelper; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = Release; };
+		700000000000000000000043 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CREATE_INFOPLIST_SECTION_IN_BINARY = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse.helper; PRODUCT_NAME = ThermalPulseHelper; SKIP_INSTALL = YES; SWIFT_OBJC_BRIDGING_HEADER = ThermalPulseCore/SMC/ThermalPulseSMC.h; }; name = HardwareProbe; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -385,6 +557,7 @@
 		800000000000000000000002 /* Build configuration list for PBXNativeTarget "ThermalPulse" */ = {isa = XCConfigurationList; buildConfigurations = (700000000000000000000011 /* Debug */, 700000000000000000000012 /* Release */, 700000000000000000000013 /* HardwareProbe */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		800000000000000000000003 /* Build configuration list for PBXNativeTarget "ThermalPulseCore" */ = {isa = XCConfigurationList; buildConfigurations = (700000000000000000000021 /* Debug */, 700000000000000000000022 /* Release */, 700000000000000000000023 /* HardwareProbe */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		800000000000000000000004 /* Build configuration list for PBXNativeTarget "ThermalPulseTests" */ = {isa = XCConfigurationList; buildConfigurations = (700000000000000000000031 /* Debug */, 700000000000000000000032 /* Release */, 700000000000000000000033 /* HardwareProbe */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		800000000000000000000005 /* Build configuration list for PBXNativeTarget "ThermalPulseHelper" */ = {isa = XCConfigurationList; buildConfigurations = (700000000000000000000041 /* Debug */, 700000000000000000000042 /* Release */, 700000000000000000000043 /* HardwareProbe */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = 900000000000000000000001 /* Project object */;

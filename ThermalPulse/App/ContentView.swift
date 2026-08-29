@@ -3,93 +3,234 @@ import ThermalPulseCore
 
 struct ContentView: View {
     @EnvironmentObject private var monitor: ThermalMonitorViewModel
-    @State private var showsRawTemperatureCandidates = false
+    @State private var showsSensorDetails = false
+    @State private var showsPerformanceCoreCandidates = false
+
+    private var otherTemperatureReadings: [SensorReading] {
+        let performanceKeys = Set(monitor.performanceCoreTemperatureReadings.map(\.descriptor.key))
+        return monitor.temperatureCandidates.filter { !performanceKeys.contains($0.descriptor.key) }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            header
-            summary
-            Divider()
+        ZStack {
+            AmbientBackground()
+
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 20) {
+                LazyVStack(alignment: .leading, spacing: 18) {
+                    header
+                    temperatureHero
+                    liveReadingsCard
+                    thermalStateBanner
+                    TurboControlView(style: .full)
                     charts
-                    readings
+                    sensorDetails
                 }
+                .frame(maxWidth: 980)
+                .padding(24)
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxHeight: .infinity)
         }
-        .padding(24)
         .onAppear {
+            monitor.setMonitorWindowVisible(true)
             monitor.startIfNeeded()
+        }
+        .onDisappear {
+            monitor.setMonitorWindowVisible(false)
         }
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 6) {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue, .cyan],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text("ThermalPulse")
-                    .font(.largeTitle.bold())
-                Text("普通权限每秒只读采样，不会修改任何 SMC 值")
+                    .font(.title2.bold())
+                Text("实时热状态")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
             Spacer()
+            ReadOnlyBadge()
+
             Button {
                 monitor.refresh()
             } label: {
                 if monitor.isScanning {
                     ProgressView()
                         .controlSize(.small)
+                        .frame(width: 34, height: 34)
                 } else {
-                    Label("重新枚举", systemImage: "arrow.clockwise")
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 34, height: 34)
                 }
             }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.circle)
             .disabled(monitor.isScanning)
+            .help("重新枚举 AppleSMC 只读传感器")
         }
+    }
+
+    private var temperatureHero: some View {
+        HStack(spacing: 18) {
+            Image(systemName: "cpu")
+                .font(.system(size: 27, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("P 核平均温度")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(temperatureAverageText)
+                        .font(.system(size: 35, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                    if monitor.performanceCoreTemperatureSummary != nil {
+                        Text("°C")
+                            .font(.headline)
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("当前最高")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.72))
+                Text(temperatureMaximumText)
+                    .font(.title3.weight(.semibold).monospacedDigit())
+                Text(temperatureCandidateCountText)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.72))
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(18)
+        .background(
+            LinearGradient(
+                colors: [Color.blue, Color.blue.opacity(0.72), Color.cyan.opacity(0.58)],
+                startPoint: .leading,
+                endPoint: .trailing
+            ),
+            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 1)
+        }
+        .shadow(color: .blue.opacity(0.16), radius: 18, y: 8)
+    }
+
+    private var liveReadingsCard: some View {
+        VStack(spacing: 0) {
+            LiveReadingRow(
+                symbol: "cpu",
+                title: "P 核平均温度",
+                value: temperatureAverageWithUnit,
+                tint: .orange
+            )
+            insetDivider
+            LiveReadingRow(
+                symbol: "thermometer.high",
+                title: "P 核族最高温度",
+                value: temperatureMaximumText,
+                tint: .orange
+            )
+            insetDivider
+            LiveReadingRow(
+                symbol: "thermometer.medium",
+                title: "系统热状态",
+                value: thermalStateText,
+                tint: thermalStateTint
+            )
+
+            Divider()
+
+            if monitor.visibleFanReadings.isEmpty {
+                LiveReadingRow(
+                    symbol: "fan",
+                    title: "风扇",
+                    value: "未知",
+                    tint: .cyan
+                )
+            } else {
+                ForEach(Array(monitor.visibleFanReadings.enumerated()), id: \.element.id) { index, reading in
+                    LiveReadingRow(
+                        symbol: "fan",
+                        title: "风扇 \(index + 1)",
+                        value: fanValue(reading),
+                        tint: .cyan
+                    )
+                    if index < monitor.visibleFanReadings.count - 1 {
+                        insetDivider
+                    }
+                }
+            }
+
+            Divider()
+
+            LiveReadingRow(
+                symbol: "waveform.path.ecg",
+                title: "采样状态",
+                value: samplingStatusText,
+                tint: monitor.errorMessage == nil ? .green : .red
+            )
+        }
+        .glassCard(padding: 0)
+    }
+
+    private var insetDivider: some View {
+        Divider()
+            .padding(.leading, 52)
+    }
+
+    private var thermalStateBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: thermalStateSymbol)
+                .foregroundStyle(thermalStateTint)
+            Text(thermalStateDetail)
+                .font(.headline)
+            Spacer()
+            if let date = monitor.lastUpdatedAt {
+                Text(date, format: .dateTime.hour().minute().second())
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 15)
+        .glassCard(padding: 0)
     }
 
     @ViewBuilder
-    private var summary: some View {
-        if let snapshot = monitor.snapshot {
-            VStack(alignment: .leading, spacing: 10) {
-                Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 8) {
-                    GridRow {
-                        metric("SMC keys", value: "\(snapshot.enumeratedKeyCount)")
-                        metric("风扇", value: snapshot.fanCount.map(String.init) ?? "未知")
-                        metric("候选温度", value: "\(monitor.temperatureCandidates.count)")
-                        metric("系统 thermal state", value: thermalStateText)
-                    }
-                }
-                Text(monitor.statusText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } else {
-            Text(monitor.statusText)
-                .foregroundStyle(monitor.errorMessage == nil ? Color.secondary : Color.red)
-        }
-    }
-
-    private func metric(_ title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.title3.monospacedDigit())
-        }
-    }
-
     private var charts: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("历史曲线")
+                    Text("趋势")
                         .font(.title2.bold())
-                    Text(
-                        "已选择 \(monitor.selectedSensorKeys.count)/\(ThermalMonitorViewModel.maximumChartSeriesCount) 项，默认包含当前最高的原始温度候选"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text("最多同时显示 \(ThermalMonitorViewModel.maximumChartSeriesCount) 项，曲线保留原始 key")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Picker(
@@ -103,17 +244,23 @@ struct ContentView: View {
                         Text(window.title).tag(window)
                     }
                 }
+                .labelsHidden()
                 .pickerStyle(.segmented)
-                .frame(width: 300)
+                .frame(width: 280)
             }
 
             if monitor.selectedSensorKeys.isEmpty {
-                Text("从下方读数列表选择最多 6 个传感器。")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 140)
+                ContentUnavailableView(
+                    "尚未选择曲线",
+                    systemImage: "chart.xyaxis.line",
+                    description: Text("展开下方传感器明细，选择最多 6 项读数。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 180)
+                .glassCard()
             } else if monitor.chartSeries.isEmpty {
-                ProgressView("正在积累所选传感器的历史样本")
-                    .frame(maxWidth: .infinity, minHeight: 140)
+                ProgressView("正在积累历史样本")
+                    .frame(maxWidth: .infinity, minHeight: 180)
+                    .glassCard()
             } else {
                 SensorHistoryCharts(
                     series: monitor.chartSeries,
@@ -123,126 +270,147 @@ struct ContentView: View {
         }
     }
 
-    private var readings: some View {
-        let fanReadings = monitor.visibleFanReadings
-        let temperatureReadings = monitor.temperatureCandidates
+    private var sensorDetails: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showsSensorDetails.toggle()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "sensor.tag.radiowaves.forward")
+                        .foregroundStyle(.blue)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("传感器与曲线")
+                            .font(.headline)
+                        Text("已选择 \(monitor.selectedSensorKeys.count)/\(ThermalMonitorViewModel.maximumChartSeriesCount) 项")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(showsSensorDetails ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("当前读数")
-                .font(.title2.bold())
+            if showsSensorDetails {
+                Divider()
 
-            if fanReadings.isEmpty && temperatureReadings.isEmpty {
-                Text("还没有取得可展示的风扇或温度候选读数。未知项不会伪装成 0。")
-                    .foregroundStyle(.secondary)
-            } else {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    if !fanReadings.isEmpty {
-                        readingSection(
-                            title: "已验证风扇读数",
-                            readings: fanReadings
+                if monitor.visibleFanReadings.isEmpty && monitor.temperatureCandidates.isEmpty {
+                    Text("等待首次只读枚举完成。")
+                        .foregroundStyle(.secondary)
+                } else {
+                    if !monitor.visibleFanReadings.isEmpty {
+                        ReadingGroup(
+                            title: "风扇",
+                            subtitle: "当前机器运行时已验证的实际 RPM",
+                            readings: monitor.visibleFanReadings
                         )
                     }
-                    if !temperatureReadings.isEmpty {
-                        rawTemperatureSection(readings: temperatureReadings)
+
+                    if !monitor.performanceCoreTemperatureReadings.isEmpty {
+                        candidateGroup(
+                            title: "P 核温度候选族",
+                            subtitle: "\(monitor.performanceCoreTemperatureReadings.count) 项，按 Tp 前缀归组",
+                            readings: monitor.performanceCoreTemperatureReadings,
+                            isExpanded: $showsPerformanceCoreCandidates
+                        )
+                    }
+
+                    if !otherTemperatureReadings.isEmpty {
+                        candidateGroup(
+                            title: "其他原始温度候选",
+                            subtitle: "\(otherTemperatureReadings.count) 项，尚未确认部件语义",
+                            readings: otherTemperatureReadings,
+                            isExpanded: Binding(
+                                get: { monitor.showsRawTemperatureCandidates },
+                                set: { newValue in
+                                    if newValue != monitor.showsRawTemperatureCandidates {
+                                        monitor.toggleRawTemperatureCandidates()
+                                    }
+                                }
+                            )
+                        )
                     }
                 }
             }
         }
+        .glassCard()
     }
 
-    private func rawTemperatureSection(readings: [SensorReading]) -> some View {
+    private func candidateGroup(
+        title: String,
+        subtitle: String,
+        readings: [SensorReading],
+        isExpanded: Binding<Bool>
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("高级原始温度候选")
-                        .font(.headline)
-                    Text("\(readings.count) 项，尚未确认部件语义")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.wrappedValue.toggle()
                 }
-                Spacer()
-                Button(showsRawTemperatureCandidates ? "收起" : "展开") {
-                    showsRawTemperatureCandidates.toggle()
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.subheadline.weight(.semibold))
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text(isExpanded.wrappedValue ? "收起" : "展开")
+                        .font(.caption.weight(.medium))
                 }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
-            if showsRawTemperatureCandidates {
+            if isExpanded.wrappedValue {
                 ForEach(readings) { reading in
-                    readingRow(reading)
+                    SensorReadingRow(reading: reading)
                     if reading.id != readings.last?.id {
                         Divider()
                     }
                 }
-            } else {
-                Text("默认收起原始候选，展开后可查看 key、数据类型、证据等级和历史统计。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
-        .padding(14)
-        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.top, 4)
     }
 
-    private func readingSection(title: String, readings: [SensorReading]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.headline)
-            ForEach(readings) { reading in
-                readingRow(reading)
-                if reading.id != readings.last?.id {
-                    Divider()
-                }
-            }
-        }
-        .padding(14)
-        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+    private var temperatureAverageText: String {
+        guard let summary = monitor.performanceCoreTemperatureSummary else { return "未知" }
+        return summary.average.formatted(.number.precision(.fractionLength(1)))
     }
 
-    private func readingRow(_ reading: SensorReading) -> some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(reading.descriptor.displayName ?? reading.descriptor.key.rawValue)
-                Text("\(reading.descriptor.key.rawValue) · \(reading.dataType.description) · \(reading.descriptor.evidence.rawValue)")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                if let statistics = monitor.statistics(for: reading.descriptor.key) {
-                    Text(
-                        "历史 \(statistics.sampleCount) 点 · 最小 \(statistics.minimum, specifier: "%.1f") · 最大 \(statistics.maximum, specifier: "%.1f") · 平均 \(statistics.average, specifier: "%.1f")"
-                    )
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            Button {
-                monitor.toggleChartSelection(reading.descriptor.key)
-            } label: {
-                Image(
-                    systemName: monitor.isSelectedForChart(reading.descriptor.key)
-                        ? "chart.xyaxis.line"
-                        : "plus.circle"
-                )
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(
-                monitor.isSelectedForChart(reading.descriptor.key) ? Color.accentColor : Color.secondary
-            )
-            .disabled(!monitor.canSelectForChart(reading.descriptor.key))
-            .help(
-                monitor.isSelectedForChart(reading.descriptor.key)
-                    ? "从历史曲线移除"
-                    : "加入历史曲线"
-            )
-            if let value = reading.value, reading.validity == .valid {
-                Text(value, format: .number.precision(.fractionLength(0...1)))
-                    .font(.title3.monospacedDigit())
-                Text(reading.descriptor.unit.rawValue)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("未知")
-                    .foregroundStyle(.secondary)
-            }
+    private var temperatureAverageWithUnit: String {
+        monitor.performanceCoreTemperatureSummary == nil ? "未知" : "\(temperatureAverageText) °C"
+    }
+
+    private var temperatureMaximumText: String {
+        guard let summary = monitor.performanceCoreTemperatureSummary else { return "未知" }
+        return summary.maximum.formatted(.number.precision(.fractionLength(1))) + " °C"
+    }
+
+    private var temperatureCandidateCountText: String {
+        guard let summary = monitor.performanceCoreTemperatureSummary else { return "等待有效候选" }
+        return "\(summary.sensorCount) 个 Tp 候选"
+    }
+
+    private func fanValue(_ reading: SensorReading) -> String {
+        guard reading.validity == .valid, let value = reading.value else { return "未知" }
+        return "\(Int(value.rounded())) RPM"
+    }
+
+    private var samplingStatusText: String {
+        guard let snapshot = monitor.snapshot else {
+            return monitor.isScanning ? "正在枚举" : "等待首次读取"
         }
+        return "\(snapshot.sampledKeyCount) 项 · 1 Hz"
     }
 
     private var thermalStateText: String {
@@ -253,5 +421,192 @@ struct ContentView: View {
         case .critical: "危急"
         case .unknown: "未知"
         }
+    }
+
+    private var thermalStateDetail: String {
+        switch monitor.thermalState {
+        case .nominal: "当前没有系统热压力"
+        case .fair: "系统已开始采取温控措施"
+        case .serious: "系统热压力较高"
+        case .critical: "系统热压力已达到危急状态"
+        case .unknown: "正在等待系统热状态"
+        }
+    }
+
+    private var thermalStateSymbol: String {
+        switch monitor.thermalState {
+        case .nominal: "checkmark.circle.fill"
+        case .fair: "exclamationmark.circle.fill"
+        case .serious: "exclamationmark.triangle.fill"
+        case .critical: "flame.fill"
+        case .unknown: "questionmark.circle"
+        }
+    }
+
+    private var thermalStateTint: Color {
+        switch monitor.thermalState {
+        case .nominal: .green
+        case .fair: .yellow
+        case .serious: .orange
+        case .critical: .red
+        case .unknown: .secondary
+        }
+    }
+}
+
+private struct LiveReadingRow: View {
+    let symbol: String
+    let title: String
+    let value: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.body.weight(.medium))
+                .foregroundStyle(tint)
+                .frame(width: 24)
+            Text(title)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.body.weight(.semibold).monospacedDigit())
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+    }
+}
+
+private struct ReadingGroup: View {
+    let title: String
+    let subtitle: String
+    let readings: [SensorReading]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(readings) { reading in
+                SensorReadingRow(reading: reading)
+                if reading.id != readings.last?.id {
+                    Divider()
+                }
+            }
+        }
+    }
+}
+
+private struct SensorReadingRow: View {
+    @EnvironmentObject private var monitor: ThermalMonitorViewModel
+    let reading: SensorReading
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: reading.descriptor.unit == .rpm ? "fan" : "thermometer.medium")
+                .foregroundStyle(reading.descriptor.unit == .rpm ? Color.cyan : Color.orange)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(reading.descriptor.displayName ?? reading.descriptor.key.rawValue)
+                    .font(.body.weight(.medium))
+                Text(
+                    "\(reading.descriptor.key.rawValue) · \(reading.dataType.description) · \(reading.descriptor.evidence.rawValue)"
+                )
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                if let statistics = monitor.statistics(for: reading.descriptor.key) {
+                    Text(
+                        "\(statistics.sampleCount) 点 · 最小 \(statistics.minimum, specifier: "%.1f") · 最大 \(statistics.maximum, specifier: "%.1f") · 平均 \(statistics.average, specifier: "%.1f")"
+                    )
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                monitor.toggleChartSelection(reading.descriptor.key)
+            } label: {
+                Image(
+                    systemName: monitor.isSelectedForChart(reading.descriptor.key)
+                        ? "checkmark.circle.fill"
+                        : "plus.circle"
+                )
+                .font(.title3)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(
+                monitor.isSelectedForChart(reading.descriptor.key) ? Color.accentColor : Color.secondary
+            )
+            .disabled(!monitor.canSelectForChart(reading.descriptor.key))
+            .help(
+                monitor.isSelectedForChart(reading.descriptor.key)
+                    ? "从趋势图移除"
+                    : "加入趋势图"
+            )
+
+            if let value = reading.value, reading.validity == .valid {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(value, format: .number.precision(.fractionLength(0...1)))
+                        .font(.body.weight(.semibold).monospacedDigit())
+                    Text(reading.descriptor.unit.rawValue)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(minWidth: 86, alignment: .trailing)
+            } else {
+                Text("未知")
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 86, alignment: .trailing)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct ReadOnlyBadge: View {
+    var body: some View {
+        Label("只读监控", systemImage: "lock.shield.fill")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.green)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.green.opacity(0.12), in: Capsule())
+    }
+}
+
+private struct AmbientBackground: View {
+    var body: some View {
+        ZStack {
+            Color(nsColor: .windowBackgroundColor)
+            LinearGradient(
+                colors: [Color.blue.opacity(0.035), .clear, Color.cyan.opacity(0.025)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private extension View {
+    func glassCard(padding: CGFloat = 16) -> some View {
+        self
+            .padding(padding)
+            .background(
+                .regularMaterial,
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.08), radius: 12, y: 5)
     }
 }

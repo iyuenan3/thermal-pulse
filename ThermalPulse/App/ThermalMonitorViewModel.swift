@@ -1,5 +1,25 @@
 import Foundation
+import OSLog
 import ThermalPulseCore
+
+private enum MonitoringPerformanceEvent: String {
+    case monitorWindowAppeared = "monitor_window_appeared"
+    case monitorWindowDisappeared = "monitor_window_disappeared"
+    case menuBarWindowRequested = "menu_bar_window_requested"
+    case rawCandidatesExpanded = "raw_candidates_expanded"
+    case rawCandidatesCollapsed = "raw_candidates_collapsed"
+    case chartSelectionChanged = "chart_selection_changed"
+    case monitoringWindowChanged = "monitoring_window_changed"
+    case refreshStarted = "refresh_started"
+    case refreshCompleted = "refresh_completed"
+    case refreshFailed = "refresh_failed"
+    case minuteSnapshot = "minute_snapshot"
+}
+
+private let monitoringPerformanceLogger = Logger(
+    subsystem: "ThermalPulse",
+    category: "MonitoringPerformance"
+)
 
 enum MonitoringWindow: Int, CaseIterable, Identifiable {
     case fiveMinutes = 300
@@ -39,12 +59,31 @@ final class ThermalMonitorViewModel: ObservableObject {
     @Published private(set) var chartHistories: [SMCKey: [SensorSamplePoint]] = [:]
     @Published private(set) var isScanning = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var showsRawTemperatureCandidates = false
+    @Published private(set) var turboStatus = TurboStatus.inactive(issue: .helperUnavailable)
+    @Published private(set) var turboHelperRegistrationState = TurboHelperRegistrationState.checking
 
     private var sampler: TelemetrySampler?
+    private let turboXPCClient: TurboXPCClient
+    private let turboCoordinator: TurboCoordinator
+    private let turboHelperRegistrationCoordinator = TurboHelperRegistrationCoordinator(
+        client: SMAppServiceTurboHelperRegistrationClient()
+    )
     private var samplingGeneration = UUID()
     private var hasStarted = false
     private var chartSensorCatalog: [SensorReading] = []
     private var chartSensorKeys: Set<SMCKey> = []
+    private var isMonitorWindowVisible = false
+    private var lastLoggedMinute = 0
+
+    init() {
+        let turboXPCClient = TurboXPCClient()
+        self.turboXPCClient = turboXPCClient
+        turboCoordinator = TurboCoordinator(
+            client: turboXPCClient,
+            initialStatus: .inactive(issue: .helperUnavailable)
+        )
+    }
 
     var statusText: String {
         if isScanning { return "正在以普通权限读取 AppleSMC" }
@@ -59,19 +98,43 @@ final class ThermalMonitorViewModel: ObservableObject {
     }
 
     var menuBarSummary: String {
-        let parts: [String] = visibleFanReadings.compactMap { reading -> String? in
-            guard reading.validity == .valid, let value = reading.value else { return nil }
-            return "\(reading.descriptor.key.rawValue) \(Int(value.rounded())) RPM"
+        let temperaturePart: String
+        if let summary = performanceCoreTemperatureSummary {
+            temperaturePart = "P\(Int(summary.average.rounded()))°"
+        } else {
+            temperaturePart = "P--°"
         }
-        return parts.isEmpty ? "ThermalPulse" : parts.joined(separator: " · ")
+
+        let fanValues = visibleFanReadings.compactMap { reading -> String? in
+            guard reading.validity == .valid, let value = reading.value else { return nil }
+            return String(Int(value.rounded()))
+        }
+        let fanPart = fanValues.isEmpty ? "F--" : "F\(fanValues.joined(separator: "/"))"
+        return "\(temperaturePart) \(fanPart)"
+    }
+
+    var performanceCoreTemperatureSummary: TemperatureFamilySummary? {
+        PerformanceCoreTemperaturePolicy.summary(from: currentReadings)
     }
 
     var visibleFanReadings: [SensorReading] {
-        currentReadings.filter { $0.descriptor.kind == .fanActualSpeed }
+        currentReadings
+            .filter { $0.descriptor.kind == .fanActualSpeed }
+            .sorted { $0.descriptor.key < $1.descriptor.key }
     }
 
     var temperatureCandidates: [SensorReading] {
-        currentReadings.filter { $0.descriptor.kind == .temperatureCandidate }
+        currentReadings
+            .filter { $0.descriptor.kind == .temperatureCandidate }
+            .sorted { $0.descriptor.key < $1.descriptor.key }
+    }
+
+    var performanceCoreTemperatureReadings: [SensorReading] {
+        PerformanceCoreTemperaturePolicy.matchingReadings(from: currentReadings)
+    }
+
+    var lastUpdatedAt: Date? {
+        telemetry?.latestFrame?.timestamp ?? snapshot?.timestamp
     }
 
     var availableChartSensors: [SensorReading] {
@@ -119,19 +182,103 @@ final class ThermalMonitorViewModel: ObservableObject {
             limit: Self.maximumChartSeriesCount
         )
         chartHistories = chartHistories.filter { selectedSensorKeys.contains($0.key) }
+        recordPerformanceEvent(.chartSelectionChanged)
         Task { await loadChartHistories(expectedGeneration: samplingGeneration) }
     }
 
     func setMonitoringWindow(_ window: MonitoringWindow) {
         guard monitoringWindow != window else { return }
         monitoringWindow = window
+        recordPerformanceEvent(.monitoringWindowChanged)
         Task { await loadChartHistories(expectedGeneration: samplingGeneration) }
+    }
+
+    func setMonitorWindowVisible(_ isVisible: Bool) {
+        guard isMonitorWindowVisible != isVisible else { return }
+        isMonitorWindowVisible = isVisible
+        recordPerformanceEvent(isVisible ? .monitorWindowAppeared : .monitorWindowDisappeared)
+    }
+
+    func recordMenuBarWindowRequest() {
+        recordPerformanceEvent(.menuBarWindowRequested)
+    }
+
+    func toggleRawTemperatureCandidates() {
+        showsRawTemperatureCandidates.toggle()
+        recordPerformanceEvent(
+            showsRawTemperatureCandidates ? .rawCandidatesExpanded : .rawCandidatesCollapsed
+        )
     }
 
     func startIfNeeded() {
         guard !hasStarted else { return }
         hasStarted = true
+        refreshTurboHelperRegistration()
         refresh()
+    }
+
+    func refreshTurboHelperRegistration() {
+        applyTurboHelperRegistrationState(turboHelperRegistrationCoordinator.refresh())
+    }
+
+    func registerTurboHelper() {
+        guard turboHelperRegistrationState.canRegister else { return }
+        turboHelperRegistrationState = .registering
+        applyTurboHelperRegistrationState(turboHelperRegistrationCoordinator.register())
+    }
+
+    func openTurboHelperSystemSettings() {
+        turboHelperRegistrationCoordinator.openSystemSettings()
+    }
+
+    func upgradeTurboHelper() {
+        guard turboHelperRegistrationState == .enabled,
+              turboStatus.phase == .inactive
+        else { return }
+
+        turboHelperRegistrationState = .registering
+        turboStatus = .inactive(issue: .helperUnavailable)
+        turboXPCClient.invalidate()
+        Task {
+            applyTurboHelperRegistrationState(
+                await turboHelperRegistrationCoordinator.replaceRegistration()
+            )
+        }
+    }
+
+    func synchronizeTurboStatus() {
+        guard turboHelperRegistrationState == .enabled else { return }
+        Task {
+            turboStatus = await turboCoordinator.synchronize()
+        }
+    }
+
+    func startTurbo() {
+        guard turboStatus.canStart else { return }
+        Task {
+            turboStatus = TurboStatus(phase: .activating)
+            turboStatus = await turboCoordinator.startTurbo()
+        }
+    }
+
+    func stopTurbo() {
+        guard turboStatus.canStop else { return }
+        Task {
+            turboStatus = TurboStatus(phase: .restoring)
+            turboStatus = await turboCoordinator.stopTurbo()
+        }
+    }
+
+    private func applyTurboHelperRegistrationState(_ state: TurboHelperRegistrationState) {
+        turboHelperRegistrationState = state
+        switch state {
+        case .enabled:
+            synchronizeTurboStatus()
+        case .requiresApproval:
+            turboStatus = .inactive(issue: .helperNotApproved)
+        case .checking, .notRegistered, .registering, .notFound, .failed:
+            turboStatus = .inactive(issue: .helperUnavailable)
+        }
     }
 
     func refresh() {
@@ -143,8 +290,10 @@ final class ThermalMonitorViewModel: ObservableObject {
         chartHistories = [:]
         chartSensorCatalog = []
         chartSensorKeys = []
+        lastLoggedMinute = 0
         let generation = UUID()
         samplingGeneration = generation
+        recordPerformanceEvent(.refreshStarted)
 
         Task {
             do {
@@ -163,8 +312,10 @@ final class ThermalMonitorViewModel: ObservableObject {
                 reconcileChartSelection(with: catalog)
                 snapshot = catalog
                 await loadChartHistories(expectedGeneration: generation)
+                recordPerformanceEvent(.refreshCompleted)
             } catch {
                 errorMessage = error.localizedDescription
+                recordPerformanceEvent(.refreshFailed)
             }
             isScanning = false
         }
@@ -177,7 +328,26 @@ final class ThermalMonitorViewModel: ObservableObject {
     private func apply(_ telemetry: TelemetrySummarySnapshot, generation: UUID) async {
         guard samplingGeneration == generation else { return }
         self.telemetry = telemetry
+        recordMinuteSnapshotIfNeeded()
         await loadChartHistories(expectedGeneration: generation)
+    }
+
+    private func recordMinuteSnapshotIfNeeded() {
+        let sampleCount = longestSeriesSampleCount
+        let completedMinute = sampleCount / 60
+        guard completedMinute > lastLoggedMinute else { return }
+        lastLoggedMinute = completedMinute
+        recordPerformanceEvent(.minuteSnapshot)
+    }
+
+    private func recordPerformanceEvent(_ event: MonitoringPerformanceEvent) {
+        monitoringPerformanceLogger.notice(
+            "event=\(event.rawValue, privacy: .public) sampleCount=\(self.longestSeriesSampleCount) selectedSeries=\(self.selectedSensorKeys.count) windowSeconds=\(self.monitoringWindow.rawValue) rawCandidatesExpanded=\(self.showsRawTemperatureCandidates) monitorWindowVisible=\(self.isMonitorWindowVisible) thermalState=\(self.thermalState.rawValue, privacy: .public)"
+        )
+    }
+
+    private var longestSeriesSampleCount: Int {
+        telemetry?.series.values.map(\.statistics.sampleCount).max() ?? 0
     }
 
     private func reconcileChartSelection(with catalog: SMCProbeSnapshot) {

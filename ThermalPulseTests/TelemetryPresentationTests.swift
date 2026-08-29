@@ -2,6 +2,49 @@ import XCTest
 @testable import ThermalPulseCore
 
 final class TelemetryPresentationTests: XCTestCase {
+    func testPerformanceCoreSummaryUsesValidFloatTpFamilyOnly() throws {
+        let readings = [
+            reading(key: "Tp09", kind: .temperatureCandidate, evidence: .rawUnverified, value: 42),
+            reading(key: "Tp10", kind: .temperatureCandidate, evidence: .rawUnverified, value: 66),
+            reading(key: "Te09", kind: .temperatureCandidate, evidence: .rawUnverified, value: 90),
+            reading(
+                key: "Tp11",
+                kind: .temperatureCandidate,
+                evidence: .rawUnverified,
+                value: 99,
+                validity: .invalid("test")
+            ),
+            reading(
+                key: "Tp12",
+                kind: .temperatureCandidate,
+                evidence: .rawUnverified,
+                value: 88,
+                dataType: "sp78"
+            )
+        ]
+
+        let summary = try XCTUnwrap(PerformanceCoreTemperaturePolicy.summary(from: readings))
+
+        XCTAssertEqual(summary.sensorCount, 2)
+        XCTAssertEqual(summary.average, 54, accuracy: 0.001)
+        XCTAssertEqual(summary.maximum, 66, accuracy: 0.001)
+        XCTAssertEqual(summary.hottestKey.rawValue, "Tp10")
+    }
+
+    func testPerformanceCoreSummaryIsUnknownWithoutValidTpFloatReadings() {
+        let readings = [
+            reading(key: "Te09", kind: .temperatureCandidate, evidence: .rawUnverified),
+            reading(
+                key: "Tp09",
+                kind: .temperatureCandidate,
+                evidence: .rawUnverified,
+                validity: .unavailable("test")
+            )
+        ]
+
+        XCTAssertNil(PerformanceCoreTemperaturePolicy.summary(from: readings))
+    }
+
     func testReducerPreservesEndpointsAndExtremaWithinBudget() {
         let base = Date(timeIntervalSince1970: 1_000)
         var points = (0..<1_000).map { index in
@@ -117,7 +160,8 @@ final class TelemetryPresentationTests: XCTestCase {
         kind: SensorKind,
         evidence: SensorEvidence,
         value: Double = 42,
-        validity: SensorValidity = .valid
+        validity: SensorValidity = .valid,
+        dataType: String = "flt "
     ) -> SensorReading {
         let smcKey = SMCKey(rawValue: key)!
         return SensorReading(
@@ -131,7 +175,7 @@ final class TelemetryPresentationTests: XCTestCase {
             ),
             value: value,
             validity: validity,
-            dataType: SMCDataType(rawValue: "flt ")!
+            dataType: SMCDataType(rawValue: dataType)!
         )
     }
 }
