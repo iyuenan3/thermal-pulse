@@ -43,6 +43,8 @@ final class ThermalMonitorViewModel: ObservableObject {
     private var sampler: TelemetrySampler?
     private var samplingGeneration = UUID()
     private var hasStarted = false
+    private var chartSensorCatalog: [SensorReading] = []
+    private var chartSensorKeys: Set<SMCKey> = []
 
     var statusText: String {
         if isScanning { return "正在以普通权限读取 AppleSMC" }
@@ -73,15 +75,7 @@ final class ThermalMonitorViewModel: ObservableObject {
     }
 
     var availableChartSensors: [SensorReading] {
-        (snapshot?.readings ?? []).filter { reading in
-            guard reading.validity == .valid else { return false }
-            switch reading.descriptor.kind {
-            case .fanActualSpeed, .temperatureCandidate:
-                return true
-            case .fanMaximumSpeed, .metadata, .raw:
-                return false
-            }
-        }.sorted { $0.descriptor.key < $1.descriptor.key }
+        chartSensorCatalog
     }
 
     var chartSeries: [SensorChartSeries] {
@@ -114,15 +108,14 @@ final class ThermalMonitorViewModel: ObservableObject {
         }
 
         return selectedSensorKeys.count < Self.maximumChartSeriesCount
-            && availableChartSensors.contains { $0.descriptor.key == key }
+            && chartSensorKeys.contains(key)
     }
 
     func toggleChartSelection(_ key: SMCKey) {
-        let availableKeys = Set(availableChartSensors.map(\.descriptor.key))
         selectedSensorKeys = SensorSelectionPolicy.toggled(
             key,
             in: selectedSensorKeys,
-            availableKeys: availableKeys,
+            availableKeys: chartSensorKeys,
             limit: Self.maximumChartSeriesCount
         )
         chartHistories = chartHistories.filter { selectedSensorKeys.contains($0.key) }
@@ -148,6 +141,8 @@ final class ThermalMonitorViewModel: ObservableObject {
         snapshot = nil
         telemetry = nil
         chartHistories = [:]
+        chartSensorCatalog = []
+        chartSensorKeys = []
         let generation = UUID()
         samplingGeneration = generation
 
@@ -165,8 +160,8 @@ final class ThermalMonitorViewModel: ObservableObject {
                     await self?.apply(telemetry, generation: generation)
                 }
                 guard samplingGeneration == generation else { return }
-                snapshot = catalog
                 reconcileChartSelection(with: catalog)
+                snapshot = catalog
                 await loadChartHistories(expectedGeneration: generation)
             } catch {
                 errorMessage = error.localizedDescription
@@ -194,8 +189,10 @@ final class ThermalMonitorViewModel: ObservableObject {
             case .fanMaximumSpeed, .metadata, .raw:
                 return false
             }
-        }
+        }.sorted { $0.descriptor.key < $1.descriptor.key }
         let availableKeys = Set(availableReadings.map(\.descriptor.key))
+        chartSensorCatalog = availableReadings
+        chartSensorKeys = availableKeys
         selectedSensorKeys = selectedSensorKeys.intersection(availableKeys)
 
         if selectedSensorKeys.isEmpty {

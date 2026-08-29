@@ -3,9 +3,10 @@ import SwiftUI
 @main
 struct ThermalPulseApp: App {
     @StateObject private var monitor = ThermalMonitorViewModel()
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        WindowGroup("ThermalPulse") {
+        Window("ThermalPulse", id: "monitor") {
             ContentView()
                 .environmentObject(monitor)
                 .frame(minWidth: 760, minHeight: 520)
@@ -19,6 +20,10 @@ struct ThermalPulseApp: App {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Divider()
+                Button("打开监控窗口") {
+                    openWindow(id: "monitor")
+                    NSApplication.shared.activate()
+                }
                 Button("重新枚举") {
                     monitor.refresh()
                 }

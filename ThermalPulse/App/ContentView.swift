@@ -3,6 +3,7 @@ import ThermalPulseCore
 
 struct ContentView: View {
     @EnvironmentObject private var monitor: ThermalMonitorViewModel
+    @State private var showsRawTemperatureCandidates = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -85,7 +86,7 @@ struct ContentView: View {
                     Text("历史曲线")
                         .font(.title2.bold())
                     Text(
-                        "已选择 \(monitor.selectedSensorKeys.count)/\(ThermalMonitorViewModel.maximumChartSeriesCount) 项，原始温度候选需手动加入"
+                        "已选择 \(monitor.selectedSensorKeys.count)/\(ThermalMonitorViewModel.maximumChartSeriesCount) 项，默认包含当前最高的原始温度候选"
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -107,7 +108,7 @@ struct ContentView: View {
             }
 
             if monitor.selectedSensorKeys.isEmpty {
-                Text("从下方读数列表选择最多 6 个传感器。默认只选择已验证风扇。")
+                Text("从下方读数列表选择最多 6 个传感器。")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 140)
             } else if monitor.chartSeries.isEmpty {
@@ -123,30 +124,63 @@ struct ContentView: View {
     }
 
     private var readings: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let fanReadings = monitor.visibleFanReadings
+        let temperatureReadings = monitor.temperatureCandidates
+
+        return VStack(alignment: .leading, spacing: 12) {
             Text("当前读数")
                 .font(.title2.bold())
 
-            if monitor.visibleFanReadings.isEmpty && monitor.temperatureCandidates.isEmpty {
+            if fanReadings.isEmpty && temperatureReadings.isEmpty {
                 Text("还没有取得可展示的风扇或温度候选读数。未知项不会伪装成 0。")
                     .foregroundStyle(.secondary)
             } else {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    if !monitor.visibleFanReadings.isEmpty {
+                    if !fanReadings.isEmpty {
                         readingSection(
                             title: "已验证风扇读数",
-                            readings: monitor.visibleFanReadings
+                            readings: fanReadings
                         )
                     }
-                    if !monitor.temperatureCandidates.isEmpty {
-                        readingSection(
-                            title: "高级原始温度候选，尚未确认部件语义",
-                            readings: monitor.temperatureCandidates
-                        )
+                    if !temperatureReadings.isEmpty {
+                        rawTemperatureSection(readings: temperatureReadings)
                     }
                 }
             }
         }
+    }
+
+    private func rawTemperatureSection(readings: [SensorReading]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("高级原始温度候选")
+                        .font(.headline)
+                    Text("\(readings.count) 项，尚未确认部件语义")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(showsRawTemperatureCandidates ? "收起" : "展开") {
+                    showsRawTemperatureCandidates.toggle()
+                }
+            }
+
+            if showsRawTemperatureCandidates {
+                ForEach(readings) { reading in
+                    readingRow(reading)
+                    if reading.id != readings.last?.id {
+                        Divider()
+                    }
+                }
+            } else {
+                Text("默认收起原始候选，展开后可查看 key、数据类型、证据等级和历史统计。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func readingSection(title: String, readings: [SensorReading]) -> some View {

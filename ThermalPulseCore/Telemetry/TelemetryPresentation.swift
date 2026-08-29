@@ -7,17 +7,40 @@ public enum SensorSelectionPolicy {
     ) -> Set<SMCKey> {
         guard limit > 0 else { return [] }
 
-        return Set(
-            readings.lazy
-                .filter {
-                    $0.validity == .valid
-                        && $0.descriptor.kind == .fanActualSpeed
-                        && $0.descriptor.evidence == .runtimeValidated
+        let fanKeys = readings.lazy
+            .filter {
+                $0.validity == .valid
+                    && $0.descriptor.kind == .fanActualSpeed
+                    && $0.descriptor.evidence == .runtimeValidated
+            }
+            .map(\.descriptor.key)
+            .sorted()
+
+        var selectedKeys = Set(fanKeys.prefix(limit))
+        guard selectedKeys.count < limit else { return selectedKeys }
+
+        let hottestTemperatureKey = readings
+            .filter {
+                $0.validity == .valid
+                    && $0.descriptor.kind == .temperatureCandidate
+                    && $0.descriptor.evidence == .rawUnverified
+                    && $0.value?.isFinite == true
+            }
+            .sorted { lhs, rhs in
+                let lhsValue = lhs.value ?? -Double.infinity
+                let rhsValue = rhs.value ?? -Double.infinity
+                if lhsValue == rhsValue {
+                    return lhs.descriptor.key < rhs.descriptor.key
                 }
-                .map(\.descriptor.key)
-                .sorted()
-                .prefix(limit)
-        )
+                return lhsValue > rhsValue
+            }
+            .first?
+            .descriptor.key
+
+        if let hottestTemperatureKey {
+            selectedKeys.insert(hottestTemperatureKey)
+        }
+        return selectedKeys
     }
 
     public static func toggled(

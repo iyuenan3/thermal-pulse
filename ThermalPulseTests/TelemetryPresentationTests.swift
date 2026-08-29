@@ -56,32 +56,49 @@ final class TelemetryPresentationTests: XCTestCase {
         )
     }
 
-    func testSelectionDefaultsToValidatedFansAndEnforcesLimit() throws {
+    func testSelectionDefaultsToValidatedFansAndHottestTemperatureCandidate() throws {
         let fan0 = reading(key: "F0Ac", kind: .fanActualSpeed, evidence: .runtimeValidated)
         let fan1 = reading(key: "F1Ac", kind: .fanActualSpeed, evidence: .runtimeValidated)
-        let temperature = reading(
+        let coolerTemperature = reading(
             key: "Tp09",
             kind: .temperatureCandidate,
-            evidence: .rawUnverified
+            evidence: .rawUnverified,
+            value: 42
         )
-        let readings = [temperature, fan1, fan0]
+        let hotterTemperature = reading(
+            key: "Tp10",
+            kind: .temperatureCandidate,
+            evidence: .rawUnverified,
+            value: 67
+        )
+        let invalidTemperature = reading(
+            key: "Tp11",
+            kind: .temperatureCandidate,
+            evidence: .rawUnverified,
+            value: 99,
+            validity: .invalid("test")
+        )
+        let readings = [coolerTemperature, fan1, invalidTemperature, hotterTemperature, fan0]
 
         let defaults = SensorSelectionPolicy.defaultKeys(from: readings, limit: 6)
-        XCTAssertEqual(defaults.map(\.rawValue).sorted(), ["F0Ac", "F1Ac"])
+        XCTAssertEqual(defaults.map(\.rawValue).sorted(), ["F0Ac", "F1Ac", "Tp10"])
+
+        let limitedDefaults = SensorSelectionPolicy.defaultKeys(from: readings, limit: 2)
+        XCTAssertEqual(limitedDefaults.map(\.rawValue).sorted(), ["F0Ac", "F1Ac"])
 
         let temperatureKey = try XCTUnwrap(SMCKey(rawValue: "Tp09"))
         let available = Set(readings.map(\.descriptor.key))
         let fullSelection = SensorSelectionPolicy.toggled(
             temperatureKey,
-            in: defaults,
+            in: limitedDefaults,
             availableKeys: available,
             limit: 2
         )
-        XCTAssertEqual(fullSelection, defaults)
+        XCTAssertEqual(fullSelection, limitedDefaults)
 
         let removed = SensorSelectionPolicy.toggled(
             try XCTUnwrap(SMCKey(rawValue: "F0Ac")),
-            in: defaults,
+            in: limitedDefaults,
             availableKeys: available,
             limit: 2
         )
@@ -98,7 +115,9 @@ final class TelemetryPresentationTests: XCTestCase {
     private func reading(
         key: String,
         kind: SensorKind,
-        evidence: SensorEvidence
+        evidence: SensorEvidence,
+        value: Double = 42,
+        validity: SensorValidity = .valid
     ) -> SensorReading {
         let smcKey = SMCKey(rawValue: key)!
         return SensorReading(
@@ -110,8 +129,8 @@ final class TelemetryPresentationTests: XCTestCase {
                 defaultVisible: kind == .fanActualSpeed,
                 displayName: nil
             ),
-            value: 42,
-            validity: .valid,
+            value: value,
+            validity: validity,
             dataType: SMCDataType(rawValue: "flt ")!
         )
     }

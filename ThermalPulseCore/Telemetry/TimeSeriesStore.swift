@@ -30,9 +30,14 @@ public actor TimeSeriesStore {
 
             let key = reading.descriptor.key
             descriptors[key] = reading.descriptor
-            var buffer = buffers[key] ?? SensorRingBuffer(capacity: capacityPerSeries)
+            let buffer: SensorRingBuffer
+            if let existingBuffer = buffers[key] {
+                buffer = existingBuffer
+            } else {
+                buffer = SensorRingBuffer(capacity: capacityPerSeries)
+                buffers[key] = buffer
+            }
             buffer.append(SensorSamplePoint(timestamp: frame.timestamp, value: value))
-            buffers[key] = buffer
         }
     }
 
@@ -77,7 +82,7 @@ public actor TimeSeriesStore {
     }
 }
 
-private struct SensorRingBuffer: Sendable {
+private final class SensorRingBuffer {
     let capacity: Int
 
     private var storage: [SensorSamplePoint?]
@@ -92,7 +97,7 @@ private struct SensorRingBuffer: Sendable {
         storage = Array(repeating: nil, count: max(1, capacity))
     }
 
-    mutating func append(_ element: SensorSamplePoint) {
+    func append(_ element: SensorSamplePoint) {
         let evicted = storage[nextWriteIndex]
         let needsMinimumRecalculation = evicted?.value == minimum
         let needsMaximumRecalculation = evicted?.value == maximum
@@ -141,7 +146,7 @@ private struct SensorRingBuffer: Sendable {
         return (storage[nextWriteIndex...] + storage[..<nextWriteIndex]).compactMap { $0 }
     }
 
-    private mutating func recomputeExtrema() {
+    private func recomputeExtrema() {
         minimum = nil
         maximum = nil
 
