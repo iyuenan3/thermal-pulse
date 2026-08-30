@@ -190,3 +190,9 @@
 - 现象：产品温度聚合已经按有效 `Tp*` 与 `Te*` float 候选动态归组，但 12 秒 HardwareProbe 仍先用一组 M4 Pro key 断言 P 核和 E 核存在。M5 实际使用的代表 key 不在该表中，完整硬件刻画会把有效设备误判为不支持。
 - 根因：早期设备研究用例混合了历史候选表与产品契约，后续产品逻辑通用化时没有同步移除测试中的机型知识。
 - 结论/避免：硬件刻画必须调用与产品相同的 `ComponentTemperaturePolicy.matchingReadings`，按动态族验证并打印证据。机型 key 只属于一次性研究记录，不能成为跨 Apple Silicon MacBook Pro 的通过门槛。
+
+## GitHub runner 镜像文件名不等于 Actions YAML 标签 · 2026-08-31
+
+- 现象：首个 v0.0.1 发布任务使用 `runs-on: macos-26-arm64` 后持续 queued，job 没有 runner name、没有步骤，也没有构建或 Release 产物。
+- 根因：`actions/runner-images` 的镜像说明文件名是 `macos-26-arm64-Readme.md`，但官方标准 Actions 标签表把该 arm64 镜像映射为 `macos-26`；文件名不能直接当作 `runs-on` 值。
+- 结论/避免：新增或升级 runner 前必须读取官方 `actions/runner-images` 根 README 的 YAML label 列，而不只看镜像文件名。任务长期 queued 且没有 runner name 时先核对 label；修正为 `macos-26` 后再触发，不把排队误判为构建缓慢。

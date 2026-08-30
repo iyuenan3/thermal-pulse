@@ -304,7 +304,7 @@
 
 - Problem: 用户需要通过 GitHub Actions 发布 v0.0.1 DMG，但当前没有可供云端使用的 Developer ID Application 证书、私钥和公证凭证。Turbo 的 XPC 安全模型又要求 App 与 helper 具有 Apple 信任链、固定 identifier 和相同非空 Team ID。
 - Constraint: 发布过程不能上传本机签名私钥，不能撤销或替换其他项目证书，也不能为公开构建放宽 helper 调用方校验。产物必须是 macOS 26 arm64 DMG，并能从构建结果独立读回版本、签名完整性和挂载内容。
-- Evidence: GitHub 官方 `macos-26-arm64` runner 当前提供 Xcode 26.6；本机同口径普通测试与 Release 构建通过，ad hoc App 通过 deep strict 校验，DMG 通过 CRC、只读挂载、版本 `0.0.1` 和 arm64 Mach-O 读回。ad hoc 签名没有 Team ID，因此现有客户端会拒绝 helper。
+- Evidence: GitHub 官方 `macos-26` runner 当前指向 macOS 26 arm64 镜像并提供 Xcode 26.6；本机同口径普通测试与 Release 构建通过，ad hoc App 通过 deep strict 校验，DMG 通过 CRC、只读挂载、版本 `0.0.1` 和 arm64 Mach-O 读回。ad hoc 签名没有 Team ID，因此现有客户端会拒绝 helper。
 - Decision: `vX.Y.Z` tag 触发 GitHub Actions，tag 必须与 `MARKETING_VERSION` 一致。工作流运行普通测试、构建 Release、ad hoc 签名 App 与 helper、生成并挂载验证压缩 DMG、生成 SHA-256，再创建 prerelease。v0.0.1 公开 DMG 明确只支持普通权限只读监控，Turbo 保持不可用。
 - Alternatives（否决）: 把 Personal Team 私钥导出到仓库；撤销或复用其他项目证书；在无 Team ID 时只按 bundle identifier 信任 App；手工上传未经 CI 验证的 DMG；把源码 ZIP 当作桌面发布产物。
 - Tradeoff: 用户可以从 GitHub 获得可重复构建的 DMG，但首次启动仍需接受未公证提示，公开包暂时不能使用 Turbo。正式分发需要未来加入 Developer ID 签名与 Apple 公证，不影响本机 Personal Team 的独立 Turbo 验收。

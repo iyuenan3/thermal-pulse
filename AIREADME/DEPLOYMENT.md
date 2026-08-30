@@ -14,7 +14,7 @@
 
 ### GitHub Actions DMG 发布
 
-- 推送与工程 `MARKETING_VERSION` 一致的 `vX.Y.Z` tag 时，`.github/workflows/release.yml` 在 GitHub 官方 `macos-26-arm64` runner 上运行。当前 runner 以 Xcode 26.6 为默认版本。
+- 推送与工程 `MARKETING_VERSION` 一致的 `vX.Y.Z` tag 时，`.github/workflows/release.yml` 在 GitHub 官方 `macos-26` Apple Silicon runner 上运行。当前 runner 为 arm64，并以 Xcode 26.6 为默认版本。
 - 工作流先执行普通测试，再构建 macOS 26 arm64 Release App。真实 AppleSMC 硬件测试不会在云端隐式运行。
 - App 和内嵌 helper 使用 ad hoc 签名完成 bundle 完整性校验，然后打包为 `ThermalPulse-vX.Y.Z-macos-arm64.dmg`。工作流会校验 App 版本、deep strict 签名、DMG CRC、只读挂载结果、arm64 App 存在性，并生成 SHA-256 文件。
 - GitHub Release 标记为 prerelease。公开 runner 没有 Developer ID 证书和私钥，产物未经公证，也没有可信 Team ID；普通监控可用，Turbo 必须按现有签名门禁保持不可用。禁止为让公开包启用 Turbo 而放宽 XPC 双向签名要求。
