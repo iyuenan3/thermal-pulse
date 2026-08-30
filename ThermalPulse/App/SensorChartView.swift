@@ -29,11 +29,116 @@ struct SensorHistoryCharts: View {
             if !temperatureSeries.isEmpty {
                 SensorHistoryChart(
                     title: "温度趋势",
-                    subtitle: "Tp 前缀按 P 核传感器族理解，单条曲线保留原始 SMC key",
+                    subtitle: "P 核、E 核与电池的只读温度趋势",
                     unit: .celsius,
                     series: temperatureSeries,
                     window: window
                 )
+            }
+        }
+    }
+}
+
+struct CompactTemperatureChart: View {
+    let series: [SensorChartSeries]
+
+    private let window: TimeInterval = 300
+
+    private var temperatureSeries: [SensorChartSeries] {
+        series.filter { $0.descriptor.unit == .celsius }
+    }
+
+    private var windowEnd: Date {
+        temperatureSeries.flatMap(\.points).map(\.timestamp).max() ?? Date()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("温度趋势")
+                        .font(.headline)
+                    Text("最近 5 分钟")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("°C")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            if temperatureSeries.isEmpty {
+                ContentUnavailableView(
+                    "等待温度数据",
+                    systemImage: "chart.xyaxis.line",
+                    description: Text("首次采样后显示曲线")
+                )
+                .frame(height: 105)
+            } else {
+                GeometryReader { geometry in
+                    let pointBudget = max(50, min(240, Int(geometry.size.width / 2)))
+                    Chart(renderedPoints(pointBudget: pointBudget)) { point in
+                        if point.isIsolated {
+                            PointMark(
+                                x: .value("时间", point.timestamp),
+                                y: .value("温度", point.value)
+                            )
+                            .foregroundStyle(by: .value("部件", point.label))
+                        } else {
+                            LineMark(
+                                x: .value("时间", point.timestamp),
+                                y: .value("温度", point.value),
+                                series: .value("连续段", point.segmentID)
+                            )
+                            .foregroundStyle(by: .value("部件", point.label))
+                            .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round))
+                        }
+                    }
+                    .chartXScale(domain: windowEnd.addingTimeInterval(-window)...windowEnd)
+                    .chartXAxis {
+                        AxisMarks(values: .automatic(desiredCount: 3)) {
+                            AxisGridLine()
+                            AxisValueLabel(format: .dateTime.hour().minute())
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading, values: .automatic(desiredCount: 4))
+                    }
+                    .chartLegend(position: .bottom, alignment: .leading, spacing: 10)
+                    .accessibilityLabel("P 核、E 核与电池温度的最近五分钟曲线")
+                }
+                .frame(height: 130)
+            }
+        }
+        .padding(12)
+        .background(
+            .regularMaterial,
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+        }
+    }
+
+    private func renderedPoints(pointBudget: Int) -> [RenderedChartPoint] {
+        temperatureSeries.flatMap { item in
+            TelemetryDisplayReducer.reduceSegments(
+                item.points,
+                maximumPointCount: pointBudget,
+                maximumGap: 1.75
+            ).enumerated().flatMap { index, segment in
+                segment.map { point in
+                    RenderedChartPoint(
+                        sensorKey: item.id,
+                        label: item.label,
+                        segmentIndex: index,
+                        timestamp: point.timestamp,
+                        value: point.value,
+                        isIsolated: segment.count == 1
+                    )
+                }
             }
         }
     }

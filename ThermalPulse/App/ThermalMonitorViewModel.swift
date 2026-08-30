@@ -42,15 +42,12 @@ struct SensorChartSeries: Identifiable {
     var id: SMCKey { descriptor.key }
     let descriptor: SensorDescriptor
     let points: [SensorSamplePoint]
-
-    var label: String {
-        descriptor.displayName ?? descriptor.key.rawValue
-    }
+    let label: String
 }
 
 @MainActor
 final class ThermalMonitorViewModel: ObservableObject {
-    static let maximumChartSeriesCount = 6
+    static let maximumChartSeriesCount = 3
 
     @Published private(set) var snapshot: SMCProbeSnapshot?
     @Published private(set) var telemetry: TelemetrySummarySnapshot?
@@ -70,9 +67,12 @@ final class ThermalMonitorViewModel: ObservableObject {
         client: SMAppServiceTurboHelperRegistrationClient()
     )
     private var samplingGeneration = UUID()
+    private var turboStatusPollingTask: Task<Void, Never>?
     private var hasStarted = false
     private var chartSensorCatalog: [SensorReading] = []
     private var chartSensorKeys: Set<SMCKey> = []
+    private var chartSensorLabels: [SMCKey: String] = [:]
+    private var chartSensorComponents: [SMCKey: ComponentTemperature] = [:]
     private var isMonitorWindowVisible = false
     private var lastLoggedMinute = 0
 
@@ -97,24 +97,40 @@ final class ThermalMonitorViewModel: ObservableObject {
         return "已建立 \(snapshot.sampledKeyCount) 个候选项的只读目录"
     }
 
-    var menuBarSummary: String {
-        let temperaturePart: String
+    var menuBarPerformanceCoreText: String {
         if let summary = performanceCoreTemperatureSummary {
-            temperaturePart = "P\(Int(summary.average.rounded()))°"
-        } else {
-            temperaturePart = "P--°"
+            return "P \(Int(summary.reportedValue.rounded()))°"
         }
+        return "P --°"
+    }
 
-        let fanValues = visibleFanReadings.compactMap { reading -> String? in
-            guard reading.validity == .valid, let value = reading.value else { return nil }
-            return String(Int(value.rounded()))
+    var menuBarEfficiencyCoreText: String {
+        guard let summary = componentTemperatureSummary(for: .efficiencyCore) else {
+            return "E --°"
         }
-        let fanPart = fanValues.isEmpty ? "F--" : "F\(fanValues.joined(separator: "/"))"
-        return "\(temperaturePart) \(fanPart)"
+        return "E \(Int(summary.reportedValue.rounded()))°"
+    }
+
+    var menuBarFanTexts: [String] {
+        let readings = visibleFanReadings
+        guard !readings.isEmpty else { return ["F --"] }
+
+        return readings.enumerated().map { index, reading in
+            guard reading.validity == .valid, let value = reading.value else {
+                return "F\(index + 1) --"
+            }
+            return "F\(index + 1) \(Int(value.rounded()))"
+        }
     }
 
     var performanceCoreTemperatureSummary: TemperatureFamilySummary? {
         PerformanceCoreTemperaturePolicy.summary(from: currentReadings)
+    }
+
+    func componentTemperatureSummary(
+        for component: ComponentTemperature
+    ) -> ComponentTemperatureSummary? {
+        ComponentTemperaturePolicy.summary(for: component, from: currentReadings)
     }
 
     var visibleFanReadings: [SensorReading] {
@@ -149,7 +165,16 @@ final class ThermalMonitorViewModel: ObservableObject {
                   !points.isEmpty
             else { return nil }
 
-            return SensorChartSeries(descriptor: reading.descriptor, points: points)
+            let displayPoints = chartSensorComponents[key].map {
+                ComponentTemperaturePolicy.displayHistoryPoints(for: $0, from: points)
+            } ?? points
+            guard !displayPoints.isEmpty else { return nil }
+
+            return SensorChartSeries(
+                descriptor: reading.descriptor,
+                points: displayPoints,
+                label: chartSensorLabels[key] ?? reading.descriptor.key.rawValue
+            )
         }
     }
 
@@ -250,6 +275,7 @@ final class ThermalMonitorViewModel: ObservableObject {
         guard turboHelperRegistrationState == .enabled else { return }
         Task {
             turboStatus = await turboCoordinator.synchronize()
+            updateTurboStatusPolling()
         }
     }
 
@@ -258,14 +284,37 @@ final class ThermalMonitorViewModel: ObservableObject {
         Task {
             turboStatus = TurboStatus(phase: .activating)
             turboStatus = await turboCoordinator.startTurbo()
+            updateTurboStatusPolling()
         }
     }
 
     func stopTurbo() {
         guard turboStatus.canStop else { return }
         Task {
+            turboStatusPollingTask?.cancel()
+            turboStatusPollingTask = nil
             turboStatus = TurboStatus(phase: .restoring)
             turboStatus = await turboCoordinator.stopTurbo()
+        }
+    }
+
+    private func updateTurboStatusPolling() {
+        turboStatusPollingTask?.cancel()
+        turboStatusPollingTask = nil
+        guard turboStatus.phase == .active else { return }
+
+        turboStatusPollingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let self else { return }
+                let synchronized = await self.turboCoordinator.synchronize()
+                guard !Task.isCancelled else { return }
+                self.turboStatus = synchronized
+                guard synchronized.phase == .active else {
+                    self.turboStatusPollingTask = nil
+                    return
+                }
+            }
         }
     }
 
@@ -290,6 +339,8 @@ final class ThermalMonitorViewModel: ObservableObject {
         chartHistories = [:]
         chartSensorCatalog = []
         chartSensorKeys = []
+        chartSensorLabels = [:]
+        chartSensorComponents = [:]
         lastLoggedMinute = 0
         let generation = UUID()
         samplingGeneration = generation
@@ -351,25 +402,27 @@ final class ThermalMonitorViewModel: ObservableObject {
     }
 
     private func reconcileChartSelection(with catalog: SMCProbeSnapshot) {
-        let availableReadings = catalog.readings.filter { reading in
-            guard reading.validity == .valid else { return false }
-            switch reading.descriptor.kind {
-            case .fanActualSpeed, .temperatureCandidate:
-                return true
-            case .fanMaximumSpeed, .metadata, .raw:
-                return false
-            }
-        }.sorted { $0.descriptor.key < $1.descriptor.key }
+        let summaries = ComponentTemperaturePolicy.summaries(from: catalog.readings)
+        let availableReadings = summaries.compactMap { summary in
+            catalog.readings.first { $0.descriptor.key == summary.representativeKey }
+        }
         let availableKeys = Set(availableReadings.map(\.descriptor.key))
         chartSensorCatalog = availableReadings
         chartSensorKeys = availableKeys
-        selectedSensorKeys = selectedSensorKeys.intersection(availableKeys)
+        chartSensorLabels = Dictionary(uniqueKeysWithValues: summaries.map { summary in
+            (summary.representativeKey, Self.chartLabel(for: summary.component))
+        })
+        chartSensorComponents = Dictionary(uniqueKeysWithValues: summaries.map { summary in
+            (summary.representativeKey, summary.component)
+        })
+        selectedSensorKeys = availableKeys
+    }
 
-        if selectedSensorKeys.isEmpty {
-            selectedSensorKeys = SensorSelectionPolicy.defaultKeys(
-                from: availableReadings,
-                limit: Self.maximumChartSeriesCount
-            )
+    private static func chartLabel(for component: ComponentTemperature) -> String {
+        switch component {
+        case .performanceCore: "P 核"
+        case .efficiencyCore: "E 核"
+        case .battery: "电池"
         }
     }
 

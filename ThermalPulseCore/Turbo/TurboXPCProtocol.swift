@@ -6,7 +6,7 @@ public enum ThermalPulseIdentity {
     public static let helperIdentifier = "io.github.iyuenan3.thermalpulse.helper"
     public static let machServiceName = helperIdentifier
     public static let launchDaemonPlistName = "\(helperIdentifier).plist"
-    public static let turboProtocolVersion = 1
+    public static let turboProtocolVersion = 7
 }
 
 public enum PeerCodeSigningRequirement {

@@ -13,7 +13,11 @@ final class TurboHelperRuntime: @unchecked Sendable {
         self.controller = controller
 
         let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
-        timer.schedule(deadline: .now() + 1, repeating: 1, leeway: .milliseconds(100))
+        timer.schedule(
+            deadline: .now() + .milliseconds(300),
+            repeating: .milliseconds(300),
+            leeway: .milliseconds(50)
+        )
         timer.setEventHandler { [controller] in
             Task {
                 _ = await controller.watchdogTick()

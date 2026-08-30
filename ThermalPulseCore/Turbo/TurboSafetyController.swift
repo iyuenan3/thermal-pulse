@@ -4,6 +4,69 @@ public enum TurboFanMode: Sendable, Equatable {
     case automatic
     case manual
     case system
+
+    public init?(appleSiliconSMCRawValue value: UInt8) {
+        switch value {
+        case 0: self = .automatic
+        case 1: self = .manual
+        case 3: self = .system
+        default: return nil
+        }
+    }
+
+    public var isAppleManaged: Bool {
+        switch self {
+        case .automatic, .system: true
+        case .manual: false
+        }
+    }
+}
+
+public struct TurboFanDiagnosticSample: Sendable, Equatable {
+    public let fanIndex: Int
+    public let baselineRPM: Double
+    public let maximumRPM: Double
+    public let actualRPM: Double?
+
+    public init(
+        fanIndex: Int,
+        baselineRPM: Double,
+        maximumRPM: Double,
+        actualRPM: Double?
+    ) {
+        self.fanIndex = fanIndex
+        self.baselineRPM = baselineRPM
+        self.maximumRPM = maximumRPM
+        self.actualRPM = actualRPM
+    }
+}
+
+public enum TurboDiagnosticEvent: Sendable, Equatable {
+    case activationStarted(fanCount: Int)
+    case thermalManagerUnlockClaimed(fanIndex: Int)
+    case modeReadbackMismatch(fanIndex: Int, observed: TurboFanMode?)
+    case targetReadbackMismatch(fanIndex: Int, expectedRPM: Double, observedRPM: Double?)
+    case actualRPMReadbackFailed(samples: [TurboFanDiagnosticSample])
+    case actualRPMRiseVerified(samples: [TurboFanDiagnosticSample])
+    case restorationCompleted(issue: TurboIssue?)
+    case restorationFailed(stage: TurboRestorationStage, fanIndex: Int?)
+}
+
+public enum TurboRestorationStage: String, Sendable, Equatable {
+    case fanMode
+    case actualRPM
+    case thermalManagerUnlock
+    case leaseRemoval
+}
+
+public protocol TurboDiagnosticSink: Sendable {
+    func record(_ event: TurboDiagnosticEvent)
+}
+
+public struct NoOpTurboDiagnosticSink: TurboDiagnosticSink {
+    public init() {}
+
+    public func record(_ event: TurboDiagnosticEvent) {}
 }
 
 public struct TurboFanDescriptor: Sendable, Equatable {
@@ -106,8 +169,12 @@ public struct SystemTurboSafetyClock: TurboSafetyClock {
 
 public struct TurboSafetyPolicy: Sendable, Equatable {
     public let unlockSettleDelay: TimeInterval
+    public let unlockClaimPollInterval: TimeInterval
+    public let unlockClaimStableReadCount: Int
     public let manualModeRetryCount: Int
     public let manualModeRetryDelay: TimeInterval
+    public let activeReconciliationRetryCount: Int
+    public let activeReconciliationRetryDelay: TimeInterval
     public let restoreRetryCount: Int
     public let restoreRetryDelay: TimeInterval
     public let actualReadbackAttemptCount: Int
@@ -115,22 +182,32 @@ public struct TurboSafetyPolicy: Sendable, Equatable {
     public let minimumActualRiseRPM: Double
     public let maximumTargetToleranceRPM: Double
     public let alreadyAtMaximumFraction: Double
+    public let maximumActualOvershootFraction: Double
 
     public init(
         unlockSettleDelay: TimeInterval = 3,
+        unlockClaimPollInterval: TimeInterval = 0.1,
+        unlockClaimStableReadCount: Int = 2,
         manualModeRetryCount: Int = 300,
         manualModeRetryDelay: TimeInterval = 0.1,
+        activeReconciliationRetryCount: Int = 10,
+        activeReconciliationRetryDelay: TimeInterval = 0.05,
         restoreRetryCount: Int = 20,
         restoreRetryDelay: TimeInterval = 0.05,
         actualReadbackAttemptCount: Int = 80,
         actualReadbackDelay: TimeInterval = 0.25,
         minimumActualRiseRPM: Double = 100,
         maximumTargetToleranceRPM: Double = 5,
-        alreadyAtMaximumFraction: Double = 0.9
+        alreadyAtMaximumFraction: Double = 0.9,
+        maximumActualOvershootFraction: Double = 0.05
     ) {
-        self.unlockSettleDelay = unlockSettleDelay
+        self.unlockSettleDelay = max(0, unlockSettleDelay)
+        self.unlockClaimPollInterval = max(0.01, unlockClaimPollInterval)
+        self.unlockClaimStableReadCount = max(1, unlockClaimStableReadCount)
         self.manualModeRetryCount = max(1, manualModeRetryCount)
         self.manualModeRetryDelay = manualModeRetryDelay
+        self.activeReconciliationRetryCount = max(1, activeReconciliationRetryCount)
+        self.activeReconciliationRetryDelay = activeReconciliationRetryDelay
         self.restoreRetryCount = max(1, restoreRetryCount)
         self.restoreRetryDelay = restoreRetryDelay
         self.actualReadbackAttemptCount = max(1, actualReadbackAttemptCount)
@@ -138,6 +215,21 @@ public struct TurboSafetyPolicy: Sendable, Equatable {
         self.minimumActualRiseRPM = minimumActualRiseRPM
         self.maximumTargetToleranceRPM = maximumTargetToleranceRPM
         self.alreadyAtMaximumFraction = alreadyAtMaximumFraction
+        self.maximumActualOvershootFraction = maximumActualOvershootFraction.isFinite
+            && maximumActualOvershootFraction >= 0
+            ? maximumActualOvershootFraction
+            : 0
+    }
+
+    public func isActualRPMPlausible(_ actualRPM: Double, maximumRPM: Double) -> Bool {
+        guard actualRPM.isFinite,
+              actualRPM >= 0,
+              maximumRPM.isFinite,
+              maximumRPM > 0
+        else {
+            return false
+        }
+        return actualRPM <= maximumRPM * (1 + maximumActualOvershootFraction)
     }
 }
 
@@ -146,6 +238,7 @@ public actor TurboSafetyController {
     private let leaseStore: any TurboLeaseStore
     private let clock: any TurboSafetyClock
     private let policy: TurboSafetyPolicy
+    private let diagnosticSink: any TurboDiagnosticSink
 
     private var status: TurboStatus
     private var lease: TurboLease?
@@ -157,12 +250,14 @@ public actor TurboSafetyController {
         hardware: any TurboFanHardware,
         leaseStore: any TurboLeaseStore,
         clock: any TurboSafetyClock = SystemTurboSafetyClock(),
-        policy: TurboSafetyPolicy = TurboSafetyPolicy()
+        policy: TurboSafetyPolicy = TurboSafetyPolicy(),
+        diagnosticSink: any TurboDiagnosticSink = NoOpTurboDiagnosticSink()
     ) {
         self.hardware = hardware
         self.leaseStore = leaseStore
         self.clock = clock
         self.policy = policy
+        self.diagnosticSink = diagnosticSink
 
         do {
             let persistedLease = try leaseStore.load()
@@ -219,18 +314,35 @@ public actor TurboSafetyController {
             status = .inactive(issue: .fanEnumerationFailed)
             return status
         }
+        diagnosticSink.record(.activationStarted(fanCount: fans.count))
 
+        let systemManagedFanIndex: Int?
+        let canClaimThermalManagerUnlock: Bool
         do {
-            if try hardware.readThermalManagerUnlock() == true {
+            let thermalManagerUnlock = try hardware.readThermalManagerUnlock()
+            if thermalManagerUnlock == true {
                 status = .inactive(issue: .externalControllerDetected)
                 return status
             }
+            var firstSystemManagedFanIndex: Int?
             for fan in fans {
-                if try hardware.readMode(of: fan) != .automatic {
+                let mode = try hardware.readMode(of: fan)
+                if !mode.isAppleManaged {
                     status = .inactive(issue: .externalControllerDetected)
                     return status
                 }
+                if mode == .system, firstSystemManagedFanIndex == nil {
+                    firstSystemManagedFanIndex = fan.index
+                }
             }
+            if thermalManagerUnlock == nil, firstSystemManagedFanIndex != nil {
+                status = .inactive(issue: .unsupportedHardware)
+                return status
+            }
+            canClaimThermalManagerUnlock = thermalManagerUnlock == false
+            systemManagedFanIndex = canClaimThermalManagerUnlock
+                ? firstSystemManagedFanIndex
+                : nil
         } catch {
             status = .inactive(issue: .fanEnumerationFailed)
             return status
@@ -258,6 +370,14 @@ public actor TurboSafetyController {
         )
 
         do {
+            if let systemManagedFanIndex {
+                try await claimThermalManagerUnlock(
+                    lease: &newLease,
+                    fanIndex: systemManagedFanIndex,
+                    ownerID: requestedOwnerID
+                )
+            }
+
             for fan in fans {
                 try ensureLeaseIsOwned(by: requestedOwnerID)
                 newLease.touchedFans.append(TurboLeaseFan(index: fan.index, modeKey: fan.modeKey))
@@ -266,14 +386,19 @@ public actor TurboSafetyController {
 
                 do {
                     try hardware.writeManualMode(to: fan)
+                    guard try hardware.readMode(of: fan) == .manual else {
+                        throw TurboFanHardwareError.thermalManagerBusy
+                    }
                 } catch let error as TurboFanHardwareError where error == .thermalManagerBusy {
                     if !newLease.claimedThermalManagerUnlock {
-                        newLease.claimedThermalManagerUnlock = true
-                        try leaseStore.save(newLease)
-                        lease = newLease
-                        try hardware.writeThermalManagerUnlock(true)
-                        try await clock.sleep(for: policy.unlockSettleDelay)
-                        try ensureLeaseIsOwned(by: requestedOwnerID)
+                        guard canClaimThermalManagerUnlock else {
+                            throw error
+                        }
+                        try await claimThermalManagerUnlock(
+                            lease: &newLease,
+                            fanIndex: fan.index,
+                            ownerID: requestedOwnerID
+                        )
                     }
                     try await retryManualMode(for: fan, ownerID: requestedOwnerID)
                 }
@@ -282,7 +407,6 @@ public actor TurboSafetyController {
                 try hardware.writeMaximumTarget(to: fan)
             }
 
-            try verifyModesAndTargets(fans)
             try await verifyActualRPMRise(fans, ownerID: requestedOwnerID)
             try ensureLeaseIsOwned(by: requestedOwnerID)
 
@@ -296,7 +420,17 @@ public actor TurboSafetyController {
             return status
         } catch {
             guard lease != nil else { return status }
-            let issue: TurboIssue = error is TurboReadbackError ? .readbackMismatch : .smcWriteFailed
+            let issue: TurboIssue
+            switch error as? TurboReadbackError {
+            case .mode:
+                issue = .modeReadbackMismatch
+            case .target:
+                issue = .targetReadbackMismatch
+            case .actualRPM:
+                issue = .actualRPMReadbackMismatch
+            case nil:
+                issue = .smcWriteFailed
+            }
             return await restore(issueAfterConfirmedRestore: issue)
         }
     }
@@ -325,22 +459,69 @@ public actor TurboSafetyController {
     @discardableResult
     public func watchdogTick() async -> TurboStatus {
         guard let lease else { return status }
+        if status.phase == .failedSafeAuto {
+            return await restore(issueAfterConfirmedRestore: nil)
+        }
         if hasExpired() {
             return await restore(issueAfterConfirmedRestore: nil)
         }
 
         guard status.phase == .active else { return status }
         do {
-            for leaseFan in lease.touchedFans {
-                let fan = Self.recoveryDescriptor(for: leaseFan)
-                guard try hardware.readMode(of: fan) == .manual else {
-                    throw TurboReadbackError.mismatch
-                }
-                _ = try hardware.readActualRPM(of: fan)
-            }
+            try await reconcileActiveTurbo(lease)
             return status
         } catch {
-            return await restore(issueAfterConfirmedRestore: .readbackMismatch)
+            let issue: TurboIssue
+            switch error as? TurboReadbackError {
+            case .mode:
+                issue = .modeReadbackMismatch
+            case .target:
+                issue = .targetReadbackMismatch
+            case .actualRPM:
+                issue = .actualRPMReadbackMismatch
+            case nil:
+                issue = .readbackMismatch
+            }
+            return await restore(issueAfterConfirmedRestore: issue)
+        }
+    }
+
+    private func claimThermalManagerUnlock(
+        lease newLease: inout TurboLease,
+        fanIndex: Int,
+        ownerID: UUID
+    ) async throws {
+        guard !newLease.claimedThermalManagerUnlock else { return }
+        newLease.claimedThermalManagerUnlock = true
+        try leaseStore.save(newLease)
+        lease = newLease
+        try hardware.writeThermalManagerUnlock(true)
+        try await waitForClaimedThermalManagerUnlock(ownerID: ownerID)
+        diagnosticSink.record(.thermalManagerUnlockClaimed(fanIndex: fanIndex))
+    }
+
+    private func waitForClaimedThermalManagerUnlock(ownerID: UUID) async throws {
+        let deadline = clock.monotonicNow() + policy.unlockSettleDelay
+        var consecutiveClaimedReads = 0
+
+        while true {
+            try ensureLeaseIsOwned(by: ownerID)
+            if try hardware.readThermalManagerUnlock() == true {
+                consecutiveClaimedReads += 1
+                if consecutiveClaimedReads >= policy.unlockClaimStableReadCount {
+                    return
+                }
+            } else {
+                consecutiveClaimedReads = 0
+            }
+
+            let remaining = deadline - clock.monotonicNow()
+            guard remaining > 0 else {
+                throw TurboReadbackError.mode
+            }
+            try await clock.sleep(
+                for: min(policy.unlockClaimPollInterval, remaining)
+            )
         }
     }
 
@@ -350,7 +531,10 @@ public actor TurboSafetyController {
             try ensureLeaseIsOwned(by: ownerID)
             do {
                 try hardware.writeManualMode(to: fan)
-                return
+                if try hardware.readMode(of: fan) == .manual {
+                    return
+                }
+                lastError = TurboReadbackError.mode
             } catch {
                 lastError = error
             }
@@ -361,35 +545,143 @@ public actor TurboSafetyController {
         throw lastError
     }
 
-    private func verifyModesAndTargets(_ fans: [TurboFanDescriptor]) throws {
-        for fan in fans {
-            guard try hardware.readMode(of: fan) == .manual else {
-                throw TurboReadbackError.mismatch
-            }
-            let target = try hardware.readTargetRPM(of: fan)
-            guard target.isFinite,
-                  abs(target - fan.maximumRPM) <= policy.maximumTargetToleranceRPM
-            else {
-                throw TurboReadbackError.mismatch
-            }
-        }
-    }
-
     private func verifyActualRPMRise(_ fans: [TurboFanDescriptor], ownerID: UUID) async throws {
+        var latestSamples: [TurboFanDiagnosticSample] = []
         for attempt in 0..<policy.actualReadbackAttemptCount {
             try ensureLeaseIsOwned(by: ownerID)
-            let allVerified = try fans.allSatisfy { fan in
-                let actual = try hardware.readActualRPM(of: fan)
-                guard actual.isFinite, actual >= 0 else { return false }
-                return actual >= fan.baselineActualRPM + policy.minimumActualRiseRPM
-                    || actual >= fan.maximumRPM * policy.alreadyAtMaximumFraction
+            var allVerified = true
+            latestSamples.removeAll(keepingCapacity: true)
+            for fan in fans {
+                try await reconcileMaximumControl(
+                    for: fan,
+                    ownerID: ownerID,
+                    retryCount: policy.activeReconciliationRetryCount,
+                    retryDelay: policy.activeReconciliationRetryDelay
+                )
+                let actual: Double
+                do {
+                    actual = try hardware.readActualRPM(of: fan)
+                } catch {
+                    latestSamples.append(Self.diagnosticSample(for: fan, actualRPM: nil))
+                    diagnosticSink.record(.actualRPMReadbackFailed(samples: latestSamples))
+                    throw TurboReadbackError.actualRPM
+                }
+                latestSamples.append(Self.diagnosticSample(for: fan, actualRPM: actual))
+                let isVerified = policy.isActualRPMPlausible(
+                    actual,
+                    maximumRPM: fan.maximumRPM
+                )
+                    && (actual >= fan.baselineActualRPM + policy.minimumActualRiseRPM
+                        || actual >= fan.maximumRPM * policy.alreadyAtMaximumFraction)
+                if !isVerified {
+                    allVerified = false
+                }
             }
-            if allVerified { return }
+            if allVerified {
+                diagnosticSink.record(.actualRPMRiseVerified(samples: latestSamples))
+                return
+            }
             if attempt + 1 < policy.actualReadbackAttemptCount {
                 try await clock.sleep(for: policy.actualReadbackDelay)
             }
         }
-        throw TurboReadbackError.mismatch
+        diagnosticSink.record(.actualRPMReadbackFailed(samples: latestSamples))
+        throw TurboReadbackError.actualRPM
+    }
+
+    private func reconcileActiveTurbo(_ lease: TurboLease) async throws {
+        guard let ownerID else { throw TurboReadbackError.mode }
+        if lease.claimedThermalManagerUnlock {
+            guard try hardware.readThermalManagerUnlock() == true else {
+                throw TurboReadbackError.mode
+            }
+        }
+
+        let fans = try hardware.discoverFans()
+        guard Self.hasValidDynamicFanSet(fans),
+              fans.count == lease.touchedFans.count
+        else {
+            throw TurboFanHardwareError.invalidData
+        }
+        let persistedFans = Dictionary(uniqueKeysWithValues: lease.touchedFans.map { ($0.index, $0) })
+        guard fans.allSatisfy({ fan in
+            persistedFans[fan.index]?.modeKey == fan.modeKey
+        }) else {
+            throw TurboFanHardwareError.invalidData
+        }
+
+        for fan in fans.sorted(by: { $0.index < $1.index }) {
+            try await reconcileMaximumControl(
+                for: fan,
+                ownerID: ownerID,
+                retryCount: policy.activeReconciliationRetryCount,
+                retryDelay: policy.activeReconciliationRetryDelay
+            )
+            let actual = try hardware.readActualRPM(of: fan)
+            guard policy.isActualRPMPlausible(actual, maximumRPM: fan.maximumRPM) else {
+                throw TurboReadbackError.actualRPM
+            }
+        }
+    }
+
+    private func reconcileMaximumControl(
+        for fan: TurboFanDescriptor,
+        ownerID: UUID,
+        retryCount: Int,
+        retryDelay: TimeInterval
+    ) async throws {
+        var lastError: Error = TurboReadbackError.mode
+        for attempt in 0..<max(1, retryCount) {
+            try ensureLeaseIsOwned(by: ownerID)
+            do {
+                let mode = try hardware.readMode(of: fan)
+                if mode != .manual {
+                    try hardware.writeManualMode(to: fan)
+                    guard try hardware.readMode(of: fan) == .manual else {
+                        throw TurboReadbackError.mode
+                    }
+                }
+
+                var target = try hardware.readTargetRPM(of: fan)
+                if !target.isFinite
+                    || abs(target - fan.maximumRPM) > policy.maximumTargetToleranceRPM
+                {
+                    try hardware.writeMaximumTarget(to: fan)
+                    target = try hardware.readTargetRPM(of: fan)
+                }
+                guard target.isFinite,
+                      abs(target - fan.maximumRPM) <= policy.maximumTargetToleranceRPM
+                else {
+                    throw TurboReadbackError.target
+                }
+                return
+            } catch let error as TurboFanHardwareError where error == .thermalManagerBusy {
+                lastError = TurboReadbackError.mode
+            } catch {
+                lastError = error
+            }
+
+            if attempt + 1 < max(1, retryCount) {
+                try await clock.sleep(for: retryDelay)
+            }
+        }
+
+        switch lastError as? TurboReadbackError {
+        case .mode:
+            diagnosticSink.record(.modeReadbackMismatch(fanIndex: fan.index, observed: nil))
+        case .target:
+            let target = try? hardware.readTargetRPM(of: fan)
+            diagnosticSink.record(
+                .targetReadbackMismatch(
+                    fanIndex: fan.index,
+                    expectedRPM: fan.maximumRPM,
+                    observedRPM: target
+                )
+            )
+        case .actualRPM, nil:
+            break
+        }
+        throw lastError
     }
 
     private func ensureLeaseIsOwned(by expectedOwnerID: UUID) throws {
@@ -416,37 +708,79 @@ public actor TurboSafetyController {
         do {
             for leaseFan in lease.touchedFans.reversed() {
                 guard Self.isValidPersistedFan(leaseFan) else {
+                    diagnosticSink.record(
+                        .restorationFailed(stage: .fanMode, fanIndex: leaseFan.index)
+                    )
                     throw TurboFanHardwareError.invalidData
                 }
                 let fan = Self.recoveryDescriptor(for: leaseFan)
-                try await retryAutomaticMode(for: fan)
+                do {
+                    try await retryAutomaticMode(for: fan)
+                } catch {
+                    diagnosticSink.record(
+                        .restorationFailed(stage: .fanMode, fanIndex: fan.index)
+                    )
+                    throw error
+                }
             }
 
             for leaseFan in lease.touchedFans {
                 let fan = Self.recoveryDescriptor(for: leaseFan)
-                guard try hardware.readMode(of: fan) == .automatic else {
-                    throw TurboReadbackError.mismatch
+                do {
+                    guard try hardware.readMode(of: fan).isAppleManaged else {
+                        throw TurboReadbackError.mode
+                    }
+                } catch {
+                    diagnosticSink.record(
+                        .restorationFailed(stage: .fanMode, fanIndex: fan.index)
+                    )
+                    throw error
                 }
-                let actual = try hardware.readActualRPM(of: fan)
-                guard actual.isFinite, actual >= 0 else {
-                    throw TurboReadbackError.mismatch
+                do {
+                    let actual = try hardware.readActualRPM(of: fan)
+                    guard actual.isFinite, actual >= 0 else {
+                        throw TurboReadbackError.actualRPM
+                    }
+                } catch {
+                    diagnosticSink.record(
+                        .restorationFailed(stage: .actualRPM, fanIndex: fan.index)
+                    )
+                    throw error
                 }
             }
 
             if lease.claimedThermalManagerUnlock {
-                try hardware.writeThermalManagerUnlock(false)
-                guard try hardware.readThermalManagerUnlock() == false else {
-                    throw TurboReadbackError.mismatch
+                do {
+                    // AppleSMC can apply Ftst asynchronously. Always enqueue the
+                    // release after our persisted claim, then wait before readback.
+                    try hardware.writeThermalManagerUnlock(false)
+                    try await clock.sleep(for: policy.unlockSettleDelay)
+                    guard try hardware.readThermalManagerUnlock() == false else {
+                        throw TurboReadbackError.mode
+                    }
+                } catch {
+                    diagnosticSink.record(
+                        .restorationFailed(stage: .thermalManagerUnlock, fanIndex: nil)
+                    )
+                    throw error
                 }
             }
 
-            try leaseStore.remove()
+            do {
+                try leaseStore.remove()
+            } catch {
+                diagnosticSink.record(
+                    .restorationFailed(stage: .leaseRemoval, fanIndex: nil)
+                )
+                throw error
+            }
             self.lease = nil
             ownerID = nil
             monotonicDeadline = nil
             status = issueAfterConfirmedRestore.map {
                 TurboStatus(phase: .failedSafeAuto, issue: $0)
             } ?? .inactive()
+            diagnosticSink.record(.restorationCompleted(issue: issueAfterConfirmedRestore))
             return status
         } catch {
             status = TurboStatus(
@@ -463,8 +797,14 @@ public actor TurboSafetyController {
         var lastError: Error = TurboFanHardwareError.writeFailed
         for attempt in 0..<policy.restoreRetryCount {
             do {
+                if try hardware.readMode(of: fan).isAppleManaged {
+                    return
+                }
                 try hardware.writeAutomaticMode(to: fan)
-                return
+                if try hardware.readMode(of: fan).isAppleManaged {
+                    return
+                }
+                lastError = TurboReadbackError.mode
             } catch {
                 lastError = error
             }
@@ -513,8 +853,22 @@ public actor TurboSafetyController {
             baselineActualRPM: 0
         )
     }
+
+    private static func diagnosticSample(
+        for fan: TurboFanDescriptor,
+        actualRPM: Double?
+    ) -> TurboFanDiagnosticSample {
+        TurboFanDiagnosticSample(
+            fanIndex: fan.index,
+            baselineRPM: fan.baselineActualRPM,
+            maximumRPM: fan.maximumRPM,
+            actualRPM: actualRPM
+        )
+    }
 }
 
 private enum TurboReadbackError: Error {
-    case mismatch
+    case mode
+    case target
+    case actualRPM
 }

@@ -1,47 +1,159 @@
+import AppKit
 import SwiftUI
 import ThermalPulseCore
 
 @main
 struct ThermalPulseApp: App {
     @StateObject private var monitor = ThermalMonitorViewModel()
-    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        Window("ThermalPulse", id: "monitor") {
-            ContentView()
-                .environmentObject(monitor)
-                .frame(minWidth: 720, minHeight: 600)
-        }
-
         MenuBarExtra {
-            MenuBarPanel(openMonitorWindow: {
-                monitor.recordMenuBarWindowRequest()
-                openWindow(id: "monitor")
-                NSApplication.shared.activate()
-            })
-            .environmentObject(monitor)
+            MenuBarPanel()
+                .environmentObject(monitor)
         } label: {
-            Text(monitor.menuBarSummary)
+            MenuBarSummaryLabel(
+                performanceCoreText: monitor.menuBarPerformanceCoreText,
+                efficiencyCoreText: monitor.menuBarEfficiencyCoreText,
+                fanTexts: monitor.menuBarFanTexts
+            )
+            .task {
+                monitor.startIfNeeded()
+            }
         }
         .menuBarExtraStyle(.window)
     }
 }
 
-private struct MenuBarPanel: View {
-    @EnvironmentObject private var monitor: ThermalMonitorViewModel
-    let openMonitorWindow: () -> Void
+private struct MenuBarSummaryLabel: View {
+    let performanceCoreText: String
+    let efficiencyCoreText: String
+    let fanTexts: [String]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            panelHeader
-            temperatureBand
-            readingsCard
-            thermalStateBanner
-            TurboControlView(style: .compact)
-            openWindowButton
+        let cells = summaryCells
+        Image(
+            nsImage: MenuBarSummaryImageRenderer.makeImage(
+                topLeft: cells.topLeft,
+                bottomLeft: cells.bottomLeft,
+                topRight: cells.topRight,
+                bottomRight: cells.bottomRight
+            )
+        )
+        .renderingMode(.template)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var summaryCells: (
+        topLeft: String,
+        bottomLeft: String,
+        topRight: String,
+        bottomRight: String
+    ) {
+        let compactFans = fanTexts.map(compactFanValue)
+        let topFan = compactFans.first ?? "--"
+        let bottomFan = compactFans.dropFirst().first ?? "--"
+
+        let performance = performanceCoreText.replacingOccurrences(of: " ", with: "")
+        let efficiency = efficiencyCoreText.replacingOccurrences(of: " ", with: "")
+        return (performance, efficiency, topFan, bottomFan)
+    }
+
+    private func compactFanValue(_ text: String) -> String {
+        text.split(separator: " ", maxSplits: 1).last.map(String.init) ?? "--"
+    }
+
+    private var accessibilitySummary: String {
+        ([performanceCoreText, efficiencyCoreText] + fanTexts).joined(separator: "，")
+    }
+}
+
+@MainActor
+private enum MenuBarSummaryImageRenderer {
+    private static let imageHeight: CGFloat = 23
+    private static let rowHeight: CGFloat = 11.5
+    private static let columnGap: CGFloat = 4
+    private static let font = NSFont.monospacedDigitSystemFont(
+        ofSize: 10,
+        weight: .semibold
+    )
+
+    static func makeImage(
+        topLeft: String,
+        bottomLeft: String,
+        topRight: String,
+        bottomRight: String
+    ) -> NSImage {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.black
+        ]
+        let leftWidth = ceil(
+            max(
+                textWidth(topLeft, attributes: attributes),
+                textWidth(bottomLeft, attributes: attributes),
+                textWidth("P100°", attributes: attributes)
+            )
+        )
+        let rightWidth = ceil(
+            max(
+                textWidth(topRight, attributes: attributes),
+                textWidth(bottomRight, attributes: attributes),
+                textWidth("0000", attributes: attributes)
+            )
+        )
+        let imageSize = NSSize(
+            width: leftWidth + columnGap + rightWidth,
+            height: imageHeight
+        )
+        let image = NSImage(size: imageSize, flipped: true) { _ in
+            (topLeft as NSString).draw(
+                at: NSPoint(x: 0, y: 0),
+                withAttributes: attributes
+            )
+            (bottomLeft as NSString).draw(
+                at: NSPoint(x: 0, y: rowHeight),
+                withAttributes: attributes
+            )
+            (topRight as NSString).draw(
+                at: NSPoint(x: leftWidth + columnGap, y: 0),
+                withAttributes: attributes
+            )
+            (bottomRight as NSString).draw(
+                at: NSPoint(x: leftWidth + columnGap, y: rowHeight),
+                withAttributes: attributes
+            )
+            return true
         }
-        .padding(14)
-        .frame(width: 360)
+        image.isTemplate = true
+        return image
+    }
+
+    private static func textWidth(
+        _ text: String,
+        attributes: [NSAttributedString.Key: Any]
+    ) -> CGFloat {
+        (text as NSString).size(withAttributes: attributes).width
+    }
+}
+
+private struct MenuBarPanel: View {
+    @EnvironmentObject private var monitor: ThermalMonitorViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            panelHeader
+            temperatureCard
+            CompactTemperatureChart(series: monitor.chartSeries)
+            fanAndSystemCard
+            TurboControlView(style: .compact)
+            panelFooter
+        }
+        .padding(12)
+        .frame(width: 420)
+        .onAppear {
+            monitor.startIfNeeded()
+        }
     }
 
     private var panelHeader: some View {
@@ -59,7 +171,7 @@ private struct MenuBarPanel: View {
                     .font(.headline)
                     .foregroundStyle(.white)
             }
-            .frame(width: 38, height: 38)
+            .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("ThermalPulse")
@@ -86,7 +198,7 @@ private struct MenuBarPanel: View {
             .buttonStyle(.bordered)
             .buttonBorderShape(.circle)
             .disabled(monitor.isScanning)
-            .help("重新枚举")
+            .help("重新读取")
 
             Menu {
                 Button("退出 ThermalPulse") {
@@ -101,106 +213,70 @@ private struct MenuBarPanel: View {
         }
     }
 
-    private var controlStateSummary: String {
-        switch monitor.turboStatus.phase {
-        case .inactive:
-            if monitor.turboStatus.issue == nil {
-                return "只读监控 · 苹果自动风扇控制"
-            }
-            if monitor.turboStatus.issue == .externalControllerDetected {
-                return "只读监控 · 检测到外部风扇控制"
-            }
-            return "只读监控 · ThermalPulse 未接管风扇"
-        case .activating:
-            return "正在验证 Turbo 安全状态"
-        case .active:
-            return "Turbo 运行中 · 最长 10 分钟"
-        case .restoring:
-            return "正在恢复苹果自动风扇控制"
-        case .failedSafeAuto:
-            return "风扇控制状态待确认"
+    private var temperatureCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            temperatureRow(
+                component: .performanceCore,
+                title: "P 核温度",
+                symbol: "cpu",
+                tint: .orange
+            )
+            insetDivider
+            temperatureRow(
+                component: .efficiencyCore,
+                title: "E 核温度",
+                symbol: "cpu",
+                tint: .yellow
+            )
+            insetDivider
+            temperatureRow(
+                component: .battery,
+                title: "电池",
+                symbol: "battery.100percent",
+                tint: .green
+            )
         }
-    }
-
-    private var temperatureBand: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "cpu")
-                .font(.title3.weight(.semibold))
-            VStack(alignment: .leading, spacing: 1) {
-                Text("P 核平均温度")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.8))
-                Text(performanceCoreTemperatureText)
-                    .font(.title2.weight(.semibold).monospacedDigit())
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 1) {
-                Text("最高")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.72))
-                Text(performanceCoreMaximumText)
-                    .font(.subheadline.weight(.semibold).monospacedDigit())
-            }
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
         .background(
-            LinearGradient(
-                colors: [Color.blue, Color.blue.opacity(0.72), Color.cyan.opacity(0.55)],
-                startPoint: .leading,
-                endPoint: .trailing
-            ),
+            .regularMaterial,
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(.white.opacity(0.12), lineWidth: 1)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
         }
-        .shadow(color: .blue.opacity(0.14), radius: 12, y: 5)
     }
 
-    private var readingsCard: some View {
+    private var fanAndSystemCard: some View {
         VStack(spacing: 0) {
             panelRow(
                 title: "系统热状态",
                 value: thermalStateText,
-                symbol: "thermometer.medium",
+                detail: thermalStateDetail,
+                symbol: thermalStateSymbol,
                 tint: thermalStateTint
             )
-            insetDivider
 
             if monitor.visibleFanReadings.isEmpty {
-                panelRow(title: "风扇", value: "未知", symbol: "fan", tint: .cyan)
+                insetDivider
+                panelRow(
+                    title: "风扇",
+                    value: "不可用",
+                    detail: "尚未读到实际 RPM",
+                    symbol: "fan",
+                    tint: .cyan
+                )
             } else {
                 ForEach(Array(monitor.visibleFanReadings.enumerated()), id: \.element.id) { index, reading in
+                    insetDivider
                     panelRow(
                         title: "风扇 \(index + 1)",
                         value: fanValue(reading),
+                        detail: monitor.turboStatus.fanControlUserMessage,
                         symbol: "fan",
                         tint: .cyan
                     )
-                    if index < monitor.visibleFanReadings.count - 1 {
-                        insetDivider
-                    }
                 }
             }
-
-            Divider()
-
-            panelRow(
-                title: "采样",
-                value: samplingText,
-                symbol: "waveform.path.ecg",
-                tint: monitor.errorMessage == nil ? .green : .red
-            )
-            insetDivider
-            panelRow(
-                title: "历史",
-                value: historyText,
-                symbol: "clock.arrow.trianglehead.counterclockwise.rotate.90",
-                tint: .secondary
-            )
         }
         .background(
             .regularMaterial,
@@ -210,83 +286,125 @@ private struct MenuBarPanel: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color.primary.opacity(0.07), lineWidth: 1)
         }
+    }
+
+    private var panelFooter: some View {
+        HStack {
+            if let errorMessage = monitor.errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.circle")
+                    .foregroundStyle(.red)
+            } else if let updatedAt = monitor.lastUpdatedAt {
+                Text("更新于 \(updatedAt.formatted(date: .omitted, time: .standard))")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("正在读取温度")
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("1 秒更新")
+                .foregroundStyle(.secondary)
+        }
+        .font(.caption2)
+        .padding(.horizontal, 2)
     }
 
     private var insetDivider: some View {
         Divider()
-            .padding(.leading, 46)
+            .padding(.leading, 48)
     }
 
-    private var thermalStateBanner: some View {
-        HStack(spacing: 9) {
-            Image(systemName: thermalStateSymbol)
-                .foregroundStyle(thermalStateTint)
-            Text(thermalStateDetail)
-                .font(.subheadline.weight(.semibold))
-            Spacer()
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            .regularMaterial,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+    private func temperatureRow(
+        component: ComponentTemperature,
+        title: String,
+        symbol: String,
+        tint: Color
+    ) -> some View {
+        let summary = monitor.componentTemperatureSummary(for: component)
+        return panelRow(
+            title: title,
+            value: temperatureText(summary),
+            detail: temperatureDetail(component: component, summary: summary),
+            symbol: symbol,
+            tint: tint
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
-        }
     }
 
-    private var openWindowButton: some View {
-        Button(action: openMonitorWindow) {
-            HStack {
-                Image(systemName: "macwindow")
-                Spacer()
-                Text("打开监控窗口")
-                    .font(.headline)
-                Spacer()
-                Image(systemName: "chevron.right")
+    private func panelRow(
+        title: String,
+        value: String,
+        detail: String,
+        symbol: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: symbol)
+                .foregroundStyle(tint)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            .padding(.horizontal, 14)
-            .frame(height: 46)
-            .contentShape(Rectangle())
+
+            Spacer()
+
+            Text(value)
+                .font(.body.weight(.semibold).monospacedDigit())
+                .foregroundStyle(value == "不可用" ? .secondary : .primary)
         }
-        .buttonStyle(.plain)
-        .background(
-            Color.accentColor.opacity(0.18),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.accentColor.opacity(0.22), lineWidth: 1)
-        }
-        .keyboardShortcut("o")
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
     }
 
-    private var performanceCoreTemperatureText: String {
-        guard let summary = monitor.performanceCoreTemperatureSummary else { return "未知" }
-        return summary.average.formatted(.number.precision(.fractionLength(1))) + " °C"
+    private func temperatureText(_ summary: ComponentTemperatureSummary?) -> String {
+        guard let summary else { return "不可用" }
+        return summary.reportedValue.formatted(.number.precision(.fractionLength(1))) + " °C"
     }
 
-    private var performanceCoreMaximumText: String {
-        guard let summary = monitor.performanceCoreTemperatureSummary else { return "未知" }
-        return summary.maximum.formatted(.number.precision(.fractionLength(1))) + " °C"
+    private func temperatureDetail(
+        component: ComponentTemperature,
+        summary: ComponentTemperatureSummary?
+    ) -> String {
+        guard let summary else { return "本机未提供可验证温度 key" }
+
+        switch component {
+        case .performanceCore:
+            return "\(summary.sensorCount) 个 P 核候选中的当前热点"
+        case .efficiencyCore:
+            return "\(summary.sensorCount) 个 E 核候选中的当前热点"
+        case .battery:
+            return "\(summary.sensorCount) 个传感器平均"
+        }
     }
 
     private func fanValue(_ reading: SensorReading) -> String {
-        guard reading.validity == .valid, let value = reading.value else { return "未知" }
+        guard reading.validity == .valid, let value = reading.value else { return "不可用" }
         return "\(Int(value.rounded())) RPM"
     }
 
-    private var samplingText: String {
-        guard let snapshot = monitor.snapshot else {
-            return monitor.isScanning ? "正在枚举" : "等待读取"
+    private var controlStateSummary: String {
+        switch monitor.turboStatus.phase {
+        case .inactive:
+            if monitor.turboStatus.issue == nil {
+                return "观察温度，风扇由苹果自动控制"
+            }
+            if monitor.turboStatus.issue == .externalControllerDetected {
+                return "检测到其他风扇控制工具"
+            }
+            return "温度监控可用，Turbo 暂不可用"
+        case .activating:
+            return "正在验证 Turbo"
+        case .active:
+            return "Turbo 运行中"
+        case .restoring:
+            return "正在恢复苹果自动控制"
+        case .failedSafeAuto:
+            return "风扇控制状态待确认"
         }
-        return "\(snapshot.sampledKeyCount) 项 · 1 Hz"
-    }
-
-    private var historyText: String {
-        "\(monitor.monitoringWindow.title) · \(monitor.selectedSensorKeys.count) 条曲线"
     }
 
     private var thermalStateText: String {
@@ -301,11 +419,11 @@ private struct MenuBarPanel: View {
 
     private var thermalStateDetail: String {
         switch monitor.thermalState {
-        case .nominal: "当前没有系统热压力"
+        case .nominal: "系统当前没有报告热压力"
         case .fair: "系统已开始采取温控措施"
         case .serious: "系统热压力较高"
         case .critical: "系统热压力已达到危急状态"
-        case .unknown: "正在等待系统热状态"
+        case .unknown: "等待系统状态"
         }
     }
 
@@ -327,20 +445,5 @@ private struct MenuBarPanel: View {
         case .critical: .red
         case .unknown: .secondary
         }
-    }
-
-    private func panelRow(title: String, value: String, symbol: String, tint: Color) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: symbol)
-                .foregroundStyle(tint)
-                .frame(width: 20)
-            Text(title)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(.body.weight(.semibold).monospacedDigit())
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 }

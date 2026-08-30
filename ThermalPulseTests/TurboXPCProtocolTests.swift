@@ -15,6 +15,7 @@ final class TurboXPCProtocolTests: XCTestCase {
             ThermalPulseIdentity.machServiceName,
             ThermalPulseIdentity.helperIdentifier
         )
+        XCTAssertEqual(ThermalPulseIdentity.turboProtocolVersion, 7)
     }
 
     func testPeerRequirementsPinAppleAnchorIdentifierAndTeam() throws {
@@ -64,8 +65,39 @@ final class TurboXPCProtocolTests: XCTestCase {
         XCTAssertEqual(try decoded.domainStatus(), status)
     }
 
-    func testXPCInterfaceRegistersTheFixedProtocol() {
-        XCTAssertNotNil(TurboXPCInterfaceFactory.makeInterface().protocol)
+    func testSecurePayloadRoundTripPreservesSpecificReadbackIssue() throws {
+        let status = TurboStatus(
+            phase: .failedSafeAuto,
+            issue: .targetReadbackMismatch
+        )
+        let payload = TurboXPCStatusPayload(status: status)
+        let data = try NSKeyedArchiver.archivedData(
+            withRootObject: payload,
+            requiringSecureCoding: true
+        )
+        let decoded = try XCTUnwrap(
+            NSKeyedUnarchiver.unarchivedObject(
+                ofClass: TurboXPCStatusPayload.self,
+                from: data
+            )
+        )
+
+        XCTAssertEqual(try decoded.domainStatus(), status)
+    }
+
+    func testXPCInterfaceRegistersOnlyTheBoundedPayloadClass() {
+        let interface = TurboXPCInterfaceFactory.makeInterface()
+
+        XCTAssertNotNil(interface.protocol)
+        let replyClasses = interface.classes(
+            for: #selector(TurboXPCProtocol.startTurbo(reply:)),
+            argumentIndex: 0,
+            ofReply: true
+        )
+        let expectedClasses = NSSet(object: TurboXPCStatusPayload.self) as! Set<AnyHashable>
+        let broadObjectClasses = NSSet(object: NSObject.self) as! Set<AnyHashable>
+        XCTAssertEqual(replyClasses, expectedClasses)
+        XCTAssertTrue(replyClasses.isDisjoint(with: broadObjectClasses))
     }
 
     func testPayloadRejectsIncompatibleProtocolVersion() {

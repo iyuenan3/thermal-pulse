@@ -97,15 +97,12 @@ final class SMCFanWriteAdapter: TurboFanHardware, @unchecked Sendable {
             let raw = try reader.read(key)
             guard raw.metadata.dataType.rawValue == "ui8 ",
                   raw.metadata.dataSize == 1,
-                  let value = raw.bytes.first
+                  let value = raw.bytes.first,
+                  let mode = TurboFanMode(appleSiliconSMCRawValue: value)
             else {
                 throw TurboFanHardwareError.unsupportedHardware
             }
-            switch value {
-            case 0: return .automatic
-            case 1: return .manual
-            default: return .system
-            }
+            return mode
         } catch let error as TurboFanHardwareError {
             throw error
         } catch {

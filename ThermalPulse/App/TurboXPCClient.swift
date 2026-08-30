@@ -1,9 +1,19 @@
 import Foundation
+import OSLog
 import ServiceManagement
 import ThermalPulseCore
 
+private let turboHelperRegistrationLogger = Logger(
+    subsystem: "ThermalPulse",
+    category: "TurboHelperRegistration"
+)
+
 @MainActor
 final class SMAppServiceTurboHelperRegistrationClient: TurboHelperRegistrationClient {
+    private static let unregisteredPollInterval = Duration.milliseconds(100)
+    private static let requiredStableUnregisteredObservations = 10
+    private static let unregistrationStabilizationTimeout = Duration.seconds(8)
+
     private let service = SMAppService.daemon(
         plistName: ThermalPulseIdentity.launchDaemonPlistName
     )
@@ -34,6 +44,12 @@ final class SMAppServiceTurboHelperRegistrationClient: TurboHelperRegistrationCl
     func replaceRegistration() async -> TurboHelperRegistrationState {
         do {
             try await service.unregister()
+            guard try await waitForStableUnregisteredState() else {
+                turboHelperRegistrationLogger.error(
+                    "helper unregistration did not stabilize status=\(self.service.status.rawValue, privacy: .public)"
+                )
+                return .failed(.upgradeFailed)
+            }
             try service.register()
             return mappedState(service.status)
         } catch {
@@ -41,6 +57,10 @@ final class SMAppServiceTurboHelperRegistrationClient: TurboHelperRegistrationCl
             if stateAfterFailure == .enabled || stateAfterFailure == .requiresApproval {
                 return stateAfterFailure
             }
+            let registrationError = error as NSError
+            turboHelperRegistrationLogger.error(
+                "helper replacement failed domain=\(registrationError.domain, privacy: .public) code=\(registrationError.code, privacy: .public) status=\(self.service.status.rawValue, privacy: .public)"
+            )
             return .failed(.upgradeFailed)
         }
     }
@@ -62,6 +82,30 @@ final class SMAppServiceTurboHelperRegistrationClient: TurboHelperRegistrationCl
         @unknown default:
             .failed(.registrationFailed)
         }
+    }
+
+    private func waitForStableUnregisteredState() async throws -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: Self.unregistrationStabilizationTimeout)
+        var stableObservationCount = 0
+
+        while clock.now < deadline {
+            switch service.status {
+            case .notRegistered, .notFound:
+                stableObservationCount += 1
+                if stableObservationCount >= Self.requiredStableUnregisteredObservations {
+                    return true
+                }
+            case .enabled, .requiresApproval:
+                stableObservationCount = 0
+            @unknown default:
+                stableObservationCount = 0
+            }
+
+            try await Task.sleep(for: Self.unregisteredPollInterval)
+        }
+
+        return false
     }
 }
 
@@ -200,18 +244,13 @@ private final class PendingTurboXPCRequest: @unchecked Sendable {
 private final class TurboXPCConnectionState: @unchecked Sendable {
     private let lock = NSLock()
     private var connection: NSXPCConnection?
-    private var activeRequest: PendingTurboXPCRequest?
+    private var activeRequests: [ObjectIdentifier: PendingTurboXPCRequest] = [:]
 
     func begin(
         request: PendingTurboXPCRequest,
         helperRequirement: String
     ) -> NSXPCConnection? {
         lock.lock()
-        guard activeRequest == nil else {
-            lock.unlock()
-            return nil
-        }
-
         let activeConnection: NSXPCConnection
         let shouldActivate: Bool
         if let connection {
@@ -234,7 +273,7 @@ private final class TurboXPCConnectionState: @unchecked Sendable {
             activeConnection = newConnection
             shouldActivate = true
         }
-        activeRequest = request
+        activeRequests[ObjectIdentifier(request)] = request
         lock.unlock()
 
         if shouldActivate {
@@ -249,17 +288,21 @@ private final class TurboXPCConnectionState: @unchecked Sendable {
         invalidateConnection: Bool
     ) {
         lock.lock()
-        guard activeRequest === request else {
+        let requestID = ObjectIdentifier(request)
+        guard activeRequests.removeValue(forKey: requestID) === request else {
             lock.unlock()
             return
         }
-        activeRequest = nil
         let connectionToInvalidate: NSXPCConnection?
+        let requestsToFail: [PendingTurboXPCRequest]
         if invalidateConnection {
             connectionToInvalidate = connection
             connection = nil
+            requestsToFail = Array(activeRequests.values)
+            activeRequests.removeAll()
         } else {
             connectionToInvalidate = nil
+            requestsToFail = []
         }
         lock.unlock()
 
@@ -269,12 +312,15 @@ private final class TurboXPCConnectionState: @unchecked Sendable {
             connectionToInvalidate.invalidate()
         }
         request.resolve(result)
+        requestsToFail.forEach {
+            $0.resolve(.failure(TurboIssue.communicationFailure))
+        }
     }
 
     func invalidate() {
         lock.lock()
-        let request = activeRequest
-        activeRequest = nil
+        let requests = Array(activeRequests.values)
+        activeRequests.removeAll()
         let connectionToInvalidate = connection
         connection = nil
         lock.unlock()
@@ -282,7 +328,9 @@ private final class TurboXPCConnectionState: @unchecked Sendable {
         connectionToInvalidate?.interruptionHandler = nil
         connectionToInvalidate?.invalidationHandler = nil
         connectionToInvalidate?.invalidate()
-        request?.resolve(.failure(TurboIssue.communicationFailure))
+        requests.forEach {
+            $0.resolve(.failure(TurboIssue.communicationFailure))
+        }
     }
 
     private func connectionFailed() {

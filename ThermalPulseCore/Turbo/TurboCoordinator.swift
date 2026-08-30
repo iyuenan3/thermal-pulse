@@ -20,6 +20,9 @@ public enum TurboIssue: String, Error, Sendable, Equatable {
     case incompatibleProtocol
     case smcWriteFailed
     case readbackMismatch
+    case modeReadbackMismatch
+    case targetReadbackMismatch
+    case actualRPMReadbackMismatch
     case recoveryFailed
     case invalidStatusResponse
     case communicationFailure
@@ -48,6 +51,12 @@ public enum TurboIssue: String, Error, Sendable, Equatable {
             "无法确认风扇控制写入"
         case .readbackMismatch:
             "风扇模式或实际转速读回不一致"
+        case .modeReadbackMismatch:
+            "风扇手动模式读回不一致"
+        case .targetReadbackMismatch:
+            "风扇最大目标转速读回不一致"
+        case .actualRPMReadbackMismatch:
+            "风扇实际转速读回不在可信范围"
         case .recoveryFailed:
             "无法确认风扇已经恢复自动模式"
         case .invalidStatusResponse:
@@ -88,6 +97,27 @@ public struct TurboStatus: Sendable, Equatable {
 
     public var canStop: Bool {
         phase == .activating || phase == .active
+    }
+
+    public var fanControlUserMessage: String {
+        switch phase {
+        case .inactive:
+            if issue == nil {
+                "苹果自动控制"
+            } else if issue == .externalControllerDetected {
+                "其他工具手动控制"
+            } else {
+                "控制状态待确认"
+            }
+        case .activating:
+            "正在切换到 Turbo"
+        case .active:
+            "Turbo 全速控制"
+        case .restoring:
+            "正在恢复苹果自动控制"
+        case .failedSafeAuto:
+            "控制状态待确认"
+        }
     }
 
     public func remainingSeconds(at date: Date) -> Int? {
@@ -352,6 +382,9 @@ public actor TurboCoordinator {
             .inactive(issue: issue)
         case .smcWriteFailed,
              .readbackMismatch,
+             .modeReadbackMismatch,
+             .targetReadbackMismatch,
+             .actualRPMReadbackMismatch,
              .recoveryFailed,
              .invalidStatusResponse,
              .communicationFailure:

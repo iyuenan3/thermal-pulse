@@ -7,10 +7,43 @@ struct TurboControlView: View {
         case compact
     }
 
+    private enum PendingConfirmation {
+        case registerHelper
+        case upgradeHelper
+
+        var title: String {
+            switch self {
+            case .registerHelper: "注册 Turbo 系统 helper？"
+            case .upgradeHelper: "升级 Turbo 系统 helper？"
+            }
+        }
+
+        var message: String {
+            switch self {
+            case .registerHelper:
+                "macOS 将登记一个仅服务 ThermalPulse 的 LaunchDaemon。注册后仍需由管理员在系统设置中明确允许，本操作不会立即写入 SMC。"
+            case .upgradeHelper:
+                "App 会先停止并注销旧 helper，再注册当前签名版本。升级不会启动 Turbo，也不会写入 SMC。"
+            }
+        }
+
+        var actionTitle: String {
+            switch self {
+            case .registerHelper: "确认注册"
+            case .upgradeHelper: "确认升级"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .registerHelper: "person.badge.key.fill"
+            case .upgradeHelper: "arrow.triangle.2.circlepath"
+            }
+        }
+    }
+
     @EnvironmentObject private var monitor: ThermalMonitorViewModel
-    @State private var showsStartConfirmation = false
-    @State private var showsHelperRegistrationConfirmation = false
-    @State private var showsHelperUpgradeConfirmation = false
+    @State private var pendingConfirmation: PendingConfirmation?
     let style: Style
 
     var body: some View {
@@ -18,7 +51,7 @@ struct TurboControlView: View {
             header
             statusContent
         }
-        .padding(style == .compact ? 14 : 18)
+        .padding(style == .compact ? 12 : 18)
         .background(
             .regularMaterial,
             in: RoundedRectangle(cornerRadius: style == .compact ? 14 : 18, style: .continuous)
@@ -28,44 +61,6 @@ struct TurboControlView: View {
                 .stroke(Color.orange.opacity(0.18), lineWidth: 1)
         }
         .shadow(color: .orange.opacity(0.08), radius: 12, y: 5)
-        .confirmationDialog(
-            "启动 10 分钟 Turbo？",
-            isPresented: $showsStartConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("启动 10 分钟 Turbo") {
-                monitor.startTurbo()
-            }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("所有已验证风扇将使用各自实时读回的最大转速。到期或发生异常时，helper 必须恢复苹果自动控制。")
-        }
-        .confirmationDialog(
-            "注册 Turbo 系统 helper？",
-            isPresented: $showsHelperRegistrationConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("注册 Turbo helper") {
-                monitor.registerTurboHelper()
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("macOS 将登记一个仅服务 ThermalPulse 的 LaunchDaemon。注册后仍需由管理员在系统设置中明确允许，本操作不会立即写入 SMC。")
-        }
-        .confirmationDialog(
-            "升级 Turbo 系统 helper？",
-            isPresented: $showsHelperUpgradeConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("升级 Turbo helper") {
-                monitor.upgradeTurboHelper()
-            }
-            .keyboardShortcut(.defaultAction)
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("App 会先停止并注销旧 helper，再注册当前签名版本。升级不会启动 Turbo，也不会写入 SMC。")
-        }
         .onAppear {
             monitor.refreshTurboHelperRegistration()
         }
@@ -93,17 +88,61 @@ struct TurboControlView: View {
 
     @ViewBuilder
     private var statusContent: some View {
-        switch monitor.turboStatus.phase {
-        case .inactive:
-            inactiveContent
-        case .activating:
-            progressContent(title: "正在验证风扇与安全租约")
-        case .active:
-            activeContent
-        case .restoring:
-            progressContent(title: "正在恢复苹果自动风扇控制")
-        case .failedSafeAuto:
-            failureContent
+        if let pendingConfirmation {
+            confirmationContent(pendingConfirmation)
+        } else {
+            switch monitor.turboStatus.phase {
+            case .inactive:
+                inactiveContent
+            case .activating:
+                progressContent(title: "正在接管并等待风扇起转")
+            case .active:
+                activeContent
+            case .restoring:
+                progressContent(title: "正在恢复苹果自动风扇控制")
+            case .failedSafeAuto:
+                failureContent
+            }
+        }
+    }
+
+    private func confirmationContent(_ confirmation: PendingConfirmation) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(confirmation.title, systemImage: confirmation.symbol)
+                .font(.headline)
+                .foregroundStyle(.orange)
+
+            Text(confirmation.message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                Button("取消") {
+                    pendingConfirmation = nil
+                }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity)
+
+                Button(confirmation.actionTitle) {
+                    perform(confirmation)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .keyboardShortcut(.defaultAction)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("turbo.confirm.action")
+            }
+        }
+    }
+
+    private func perform(_ confirmation: PendingConfirmation) {
+        pendingConfirmation = nil
+        switch confirmation {
+        case .registerHelper:
+            monitor.registerTurboHelper()
+        case .upgradeHelper:
+            monitor.upgradeTurboHelper()
         }
     }
 
@@ -135,7 +174,7 @@ struct TurboControlView: View {
             .foregroundStyle(.secondary)
 
             Button {
-                showsHelperRegistrationConfirmation = true
+                pendingConfirmation = .registerHelper
             } label: {
                 Label("注册 Turbo helper", systemImage: "person.badge.key.fill")
                     .font(.headline)
@@ -208,9 +247,11 @@ struct TurboControlView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if monitor.turboStatus.issue == .writePathUnavailable {
+            if monitor.turboStatus.issue == .writePathUnavailable
+                || monitor.turboStatus.issue == .incompatibleProtocol
+            {
                 Button {
-                    showsHelperUpgradeConfirmation = true
+                    pendingConfirmation = .upgradeHelper
                 } label: {
                     Label("升级 Turbo helper", systemImage: "arrow.triangle.2.circlepath")
                         .font(.headline)
@@ -223,7 +264,7 @@ struct TurboControlView: View {
                 .accessibilityIdentifier("turbo.helper.upgrade")
             } else {
                 Button {
-                    showsStartConfirmation = true
+                    monitor.startTurbo()
                 } label: {
                     Label(startButtonTitle, systemImage: "bolt.fill")
                         .font(.headline)
@@ -258,7 +299,7 @@ struct TurboControlView: View {
             Button(role: .destructive) {
                 monitor.stopTurbo()
             } label: {
-                Label("立即恢复自动", systemImage: "fan.badge.automatic")
+                Label("停止 Turbo，恢复自动", systemImage: "fan.badge.automatic")
                     .frame(maxWidth: .infinity)
                     .frame(height: style == .compact ? 36 : 40)
             }

@@ -17,6 +17,126 @@ public struct TemperatureFamilySummary: Equatable, Sendable {
         self.maximum = maximum
         self.hottestKey = hottestKey
     }
+
+    public var reportedValue: Double { maximum }
+}
+
+public enum ComponentTemperature: String, CaseIterable, Sendable {
+    case performanceCore
+    case efficiencyCore
+    case battery
+}
+
+public struct ComponentTemperatureSummary: Equatable, Sendable {
+    public let component: ComponentTemperature
+    public let sensorCount: Int
+    public let average: Double
+    public let maximum: Double
+    public let representativeKey: SMCKey
+
+    public init(
+        component: ComponentTemperature,
+        sensorCount: Int,
+        average: Double,
+        maximum: Double,
+        representativeKey: SMCKey
+    ) {
+        self.component = component
+        self.sensorCount = sensorCount
+        self.average = average
+        self.maximum = maximum
+        self.representativeKey = representativeKey
+    }
+
+    public var reportedValue: Double {
+        switch component {
+        case .performanceCore, .efficiencyCore:
+            maximum
+        case .battery:
+            average
+        }
+    }
+}
+
+public enum ComponentTemperaturePolicy {
+    private static let batteryKeys = Set(["TB1T", "TB2T"])
+
+    public static func matchingReadings(
+        for component: ComponentTemperature,
+        from readings: [SensorReading]
+    ) -> [SensorReading] {
+        readings.filter { reading in
+            guard reading.validity == .valid,
+                  reading.descriptor.kind == .temperatureCandidate,
+                  reading.descriptor.unit == .celsius,
+                  reading.value?.isFinite == true
+            else { return false }
+
+            let key = reading.descriptor.key.rawValue
+            switch component {
+            case .performanceCore:
+                return key.hasPrefix("Tp")
+                    && normalizedDataType(reading.dataType) == "flt"
+                    && reading.value.map(Self.isPlausibleCoreTemperature) == true
+            case .efficiencyCore:
+                return key.hasPrefix("Te")
+                    && normalizedDataType(reading.dataType) == "flt"
+                    && reading.value.map(Self.isPlausibleCoreTemperature) == true
+            case .battery:
+                return batteryKeys.contains(key)
+            }
+        }.sorted { $0.descriptor.key < $1.descriptor.key }
+    }
+
+    public static func summary(
+        for component: ComponentTemperature,
+        from readings: [SensorReading]
+    ) -> ComponentTemperatureSummary? {
+        let candidates = matchingReadings(for: component, from: readings).compactMap {
+            reading -> (key: SMCKey, value: Double)? in
+            guard let value = reading.value else { return nil }
+            return (reading.descriptor.key, value)
+        }
+        guard let hottest = candidates.max(by: { lhs, rhs in
+            if lhs.value == rhs.value { return lhs.key > rhs.key }
+            return lhs.value < rhs.value
+        }) else { return nil }
+
+        return ComponentTemperatureSummary(
+            component: component,
+            sensorCount: candidates.count,
+            average: candidates.reduce(0) { $0 + $1.value } / Double(candidates.count),
+            maximum: hottest.value,
+            representativeKey: hottest.key
+        )
+    }
+
+    public static func summaries(from readings: [SensorReading]) -> [ComponentTemperatureSummary] {
+        ComponentTemperature.allCases.compactMap { summary(for: $0, from: readings) }
+    }
+
+    public static func displayHistoryPoints(
+        for component: ComponentTemperature,
+        from points: [SensorSamplePoint]
+    ) -> [SensorSamplePoint] {
+        points.filter { point in
+            guard point.value.isFinite else { return false }
+            switch component {
+            case .performanceCore, .efficiencyCore:
+                return isPlausibleCoreTemperature(point.value)
+            case .battery:
+                return true
+            }
+        }
+    }
+
+    private static func normalizedDataType(_ dataType: SMCDataType) -> String {
+        dataType.normalized.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func isPlausibleCoreTemperature(_ value: Double) -> Bool {
+        (10...120).contains(value)
+    }
 }
 
 public enum PerformanceCoreTemperaturePolicy {
@@ -27,7 +147,7 @@ public enum PerformanceCoreTemperaturePolicy {
                 && reading.descriptor.unit == .celsius
                 && reading.descriptor.key.rawValue.hasPrefix("Tp")
                 && normalizedDataType(reading.dataType) == "flt"
-                && reading.value?.isFinite == true
+                && reading.value.map { $0.isFinite && (10...120).contains($0) } == true
         }.sorted { $0.descriptor.key < $1.descriptor.key }
     }
 

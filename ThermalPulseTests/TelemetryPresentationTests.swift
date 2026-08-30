@@ -28,6 +28,7 @@ final class TelemetryPresentationTests: XCTestCase {
         XCTAssertEqual(summary.sensorCount, 2)
         XCTAssertEqual(summary.average, 54, accuracy: 0.001)
         XCTAssertEqual(summary.maximum, 66, accuracy: 0.001)
+        XCTAssertEqual(summary.reportedValue, 66, accuracy: 0.001)
         XCTAssertEqual(summary.hottestKey.rawValue, "Tp10")
     }
 
@@ -43,6 +44,94 @@ final class TelemetryPresentationTests: XCTestCase {
         ]
 
         XCTAssertNil(PerformanceCoreTemperaturePolicy.summary(from: readings))
+    }
+
+    func testComponentTemperaturePolicyUsesOnlyNamedEvidenceFamilies() throws {
+        let readings = [
+            reading(key: "Tp09", kind: .temperatureCandidate, evidence: .rawUnverified, value: 48),
+            reading(key: "Tp10", kind: .temperatureCandidate, evidence: .rawUnverified, value: 62),
+            reading(key: "Te09", kind: .temperatureCandidate, evidence: .rawUnverified, value: 44),
+            reading(key: "Te10", kind: .temperatureCandidate, evidence: .rawUnverified, value: 50),
+            reading(key: "Tm0p", kind: .temperatureCandidate, evidence: .rawUnverified, value: 41),
+            reading(key: "TH0x", kind: .temperatureCandidate, evidence: .rawUnverified, value: 35),
+            reading(key: "TB1T", kind: .temperatureCandidate, evidence: .rawUnverified, value: 32),
+            reading(key: "TB2T", kind: .temperatureCandidate, evidence: .rawUnverified, value: 34),
+            reading(key: "TW0P", kind: .temperatureCandidate, evidence: .rawUnverified, value: 99),
+        ]
+
+        let performanceCore = try XCTUnwrap(
+            ComponentTemperaturePolicy.summary(for: .performanceCore, from: readings)
+        )
+        let efficiencyCore = try XCTUnwrap(
+            ComponentTemperaturePolicy.summary(for: .efficiencyCore, from: readings)
+        )
+        let battery = try XCTUnwrap(
+            ComponentTemperaturePolicy.summary(for: .battery, from: readings)
+        )
+
+        XCTAssertEqual(performanceCore.average, 55, accuracy: 0.001)
+        XCTAssertEqual(performanceCore.reportedValue, 62, accuracy: 0.001)
+        XCTAssertEqual(performanceCore.representativeKey.rawValue, "Tp10")
+        XCTAssertEqual(efficiencyCore.average, 47, accuracy: 0.001)
+        XCTAssertEqual(efficiencyCore.reportedValue, 50, accuracy: 0.001)
+        XCTAssertEqual(efficiencyCore.representativeKey.rawValue, "Te10")
+        XCTAssertEqual(battery.average, 33, accuracy: 0.001)
+        XCTAssertEqual(battery.reportedValue, 33, accuracy: 0.001)
+        XCTAssertEqual(battery.representativeKey.rawValue, "TB2T")
+    }
+
+    func testCoreFamiliesIgnoreImplausibleIdleSentinels() throws {
+        let readings = [
+            reading(key: "Tp09", kind: .temperatureCandidate, evidence: .rawUnverified, value: 0),
+            reading(key: "Tp10", kind: .temperatureCandidate, evidence: .rawUnverified, value: 48),
+            reading(key: "Te09", kind: .temperatureCandidate, evidence: .rawUnverified, value: -10),
+            reading(key: "Te10", kind: .temperatureCandidate, evidence: .rawUnverified, value: 44),
+        ]
+
+        let performanceCore = try XCTUnwrap(
+            ComponentTemperaturePolicy.summary(for: .performanceCore, from: readings)
+        )
+        let efficiencyCore = try XCTUnwrap(
+            ComponentTemperaturePolicy.summary(for: .efficiencyCore, from: readings)
+        )
+
+        XCTAssertEqual(performanceCore.sensorCount, 1)
+        XCTAssertEqual(performanceCore.reportedValue, 48)
+        XCTAssertEqual(efficiencyCore.sensorCount, 1)
+        XCTAssertEqual(efficiencyCore.reportedValue, 44)
+    }
+
+    func testCoreChartHistoryDropsZeroSentinelsAndLeavesAVisibleGap() throws {
+        let base = Date(timeIntervalSince1970: 1_000)
+        let points = [48.0, 0, 50].enumerated().map { index, value in
+            SensorSamplePoint(
+                timestamp: base.addingTimeInterval(Double(index)),
+                value: value
+            )
+        }
+
+        let displayed = ComponentTemperaturePolicy.displayHistoryPoints(
+            for: .performanceCore,
+            from: points
+        )
+        let segments = TelemetryDisplayReducer.reduceSegments(
+            displayed,
+            maximumPointCount: 10,
+            maximumGap: 1.75
+        )
+
+        XCTAssertEqual(displayed.map(\.value), [48, 50])
+        XCTAssertEqual(segments.count, 2)
+        XCTAssertEqual(segments.flatMap { $0 }.map(\.value), [48, 50])
+    }
+
+    func testMissingEfficiencyCoreEvidenceRemainsUnavailable() {
+        let readings = [
+            reading(key: "Tp09", kind: .temperatureCandidate, evidence: .rawUnverified, value: 48),
+            reading(key: "TH0x", kind: .temperatureCandidate, evidence: .rawUnverified, value: 35),
+        ]
+
+        XCTAssertNil(ComponentTemperaturePolicy.summary(for: .efficiencyCore, from: readings))
     }
 
     func testReducerPreservesEndpointsAndExtremaWithinBudget() {

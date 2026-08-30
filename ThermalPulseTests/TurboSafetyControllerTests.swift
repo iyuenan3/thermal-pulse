@@ -49,7 +49,7 @@ final class TurboSafetyControllerTests: XCTestCase {
         XCTAssertEqual(store.saveCount, 0)
     }
 
-    func testUnknownFanModeRefusesWithoutWritingOrTakingLease() async {
+    func testSystemManagedFanModeCanProceedWithoutBeingMisclassifiedAsExternalControl() async {
         let hardware = TurboFanHardwareSpy()
         hardware.modes[1] = .system
         let store = TurboLeaseStoreSpy()
@@ -57,9 +57,53 @@ final class TurboSafetyControllerTests: XCTestCase {
 
         let status = await controller.startTurbo(ownerID: owner)
 
-        XCTAssertEqual(status, .inactive(issue: .externalControllerDetected))
+        XCTAssertEqual(status.phase, .active)
+        XCTAssertEqual(hardware.manualWrites, [0, 1])
+        XCTAssertEqual(store.saveCount, 4)
+        XCTAssertEqual(hardware.unlockWrites, [true])
+    }
+
+    func testUnsupportedThermalManagerRefusesSystemModeWithoutWriting() async {
+        let hardware = TurboFanHardwareSpy()
+        hardware.modes[0] = .system
+        hardware.unlockState = nil
+        let store = TurboLeaseStoreSpy()
+        let controller = makeController(hardware: hardware, store: store)
+
+        let status = await controller.startTurbo(ownerID: owner)
+
+        XCTAssertEqual(status, .inactive(issue: .unsupportedHardware))
         XCTAssertTrue(hardware.manualWrites.isEmpty)
+        XCTAssertTrue(hardware.unlockWrites.isEmpty)
         XCTAssertEqual(store.saveCount, 0)
+    }
+
+    func testUnsupportedThermalManagerNeverWritesUnknownUnlockAfterBusyMode() async {
+        let hardware = TurboFanHardwareSpy()
+        hardware.unlockState = nil
+        hardware.manualFailuresRemaining[0] = 1
+        let store = TurboLeaseStoreSpy()
+        let controller = makeController(hardware: hardware, store: store)
+
+        let status = await controller.startTurbo(ownerID: owner)
+
+        XCTAssertEqual(
+            status,
+            TurboStatus(phase: .failedSafeAuto, issue: .smcWriteFailed)
+        )
+        XCTAssertTrue(hardware.unlockWrites.isEmpty)
+        XCTAssertNil(store.persistedLease)
+    }
+
+    func testAppleSiliconModeValuesRejectUnknownRawStates() {
+        XCTAssertEqual(TurboFanMode(appleSiliconSMCRawValue: 0), .automatic)
+        XCTAssertEqual(TurboFanMode(appleSiliconSMCRawValue: 1), .manual)
+        XCTAssertEqual(TurboFanMode(appleSiliconSMCRawValue: 3), .system)
+        XCTAssertNil(TurboFanMode(appleSiliconSMCRawValue: 2))
+        XCTAssertNil(TurboFanMode(appleSiliconSMCRawValue: 255))
+        XCTAssertTrue(TurboFanMode.automatic.isAppleManaged)
+        XCTAssertTrue(TurboFanMode.system.isAppleManaged)
+        XCTAssertFalse(TurboFanMode.manual.isAppleManaged)
     }
 
     func testUnlockClaimIsPersistedBeforeThermalManagerIsReleased() async {
@@ -81,6 +125,106 @@ final class TurboSafetyControllerTests: XCTestCase {
         )
         XCTAssertTrue(events.contains("unlock:false"))
         XCTAssertFalse(hardware.unlockState ?? true)
+    }
+
+    func testThermalManagerClaimPollsUntilStableThenReleaseKeepsSettledReadback() async throws {
+        let recorder = TurboEventRecorder()
+        let hardware = TurboFanHardwareSpy(recorder: recorder)
+        hardware.modes[0] = .system
+        hardware.recordUnlockReads = true
+        hardware.unlockReadSequence = [false, false, true, true]
+        let store = TurboLeaseStoreSpy(recorder: recorder)
+        let clock = TurboClockSpy(
+            now: Date(timeIntervalSince1970: 10_000),
+            recorder: recorder
+        )
+        let controller = TurboSafetyController(
+            hardware: hardware,
+            leaseStore: store,
+            clock: clock,
+            policy: TurboSafetyPolicy(
+                unlockSettleDelay: 3,
+                unlockClaimPollInterval: 0.1,
+                unlockClaimStableReadCount: 2,
+                manualModeRetryCount: 3,
+                manualModeRetryDelay: 0,
+                activeReconciliationRetryCount: 2,
+                activeReconciliationRetryDelay: 0,
+                restoreRetryCount: 2,
+                restoreRetryDelay: 0,
+                actualReadbackAttemptCount: 2,
+                actualReadbackDelay: 0
+            )
+        )
+
+        let active = await controller.startTurbo(ownerID: owner)
+        let stopped = await controller.stopTurbo()
+
+        XCTAssertEqual(active.phase, .active)
+        XCTAssertEqual(stopped, .inactive())
+        let events = recorder.events
+        let claimWrite = try XCTUnwrap(events.firstIndex(of: "unlock:true"))
+        let firstUnclaimedRead = try XCTUnwrap(
+            events.indices.first { $0 > claimWrite && events[$0] == "read-unlock:false" }
+        )
+        let firstPoll = try XCTUnwrap(events.firstIndex(of: "sleep:0.1"))
+        let claimedReads = events.indices.filter { events[$0] == "read-unlock:true" }
+        XCTAssertEqual(claimedReads.count, 2)
+        XCTAssertLessThan(claimWrite, firstUnclaimedRead)
+        XCTAssertLessThan(firstUnclaimedRead, firstPoll)
+        XCTAssertLessThan(firstPoll, claimedReads[0])
+        XCTAssertEqual(events.filter { $0 == "sleep:0.1" }.count, 2)
+
+        let releaseWrite = try XCTUnwrap(events.lastIndex(of: "unlock:false"))
+        let releaseSleep = try XCTUnwrap(events.lastIndex(of: "sleep:3.0"))
+        let releasedRead = try XCTUnwrap(events.lastIndex(of: "read-unlock:false"))
+        XCTAssertLessThan(releaseWrite, releaseSleep)
+        XCTAssertLessThan(releaseSleep, releasedRead)
+    }
+
+    func testThermalManagerClaimPollingTimesOutAndRestoresWithoutTouchingFans() async {
+        let recorder = TurboEventRecorder()
+        let hardware = TurboFanHardwareSpy(recorder: recorder)
+        hardware.modes[0] = .system
+        hardware.recordUnlockReads = true
+        hardware.unlockReadSequence = [false, false, false, false, false]
+        let store = TurboLeaseStoreSpy(recorder: recorder)
+        let clock = TurboClockSpy(
+            now: Date(timeIntervalSince1970: 10_000),
+            recorder: recorder
+        )
+        let controller = TurboSafetyController(
+            hardware: hardware,
+            leaseStore: store,
+            clock: clock,
+            policy: TurboSafetyPolicy(
+                unlockSettleDelay: 0.25,
+                unlockClaimPollInterval: 0.1,
+                unlockClaimStableReadCount: 2,
+                manualModeRetryCount: 3,
+                manualModeRetryDelay: 0,
+                activeReconciliationRetryCount: 2,
+                activeReconciliationRetryDelay: 0,
+                restoreRetryCount: 2,
+                restoreRetryDelay: 0,
+                actualReadbackAttemptCount: 2,
+                actualReadbackDelay: 0
+            )
+        )
+
+        let status = await controller.startTurbo(ownerID: owner)
+
+        XCTAssertEqual(
+            status,
+            TurboStatus(phase: .failedSafeAuto, issue: .modeReadbackMismatch)
+        )
+        XCTAssertTrue(hardware.manualWrites.isEmpty)
+        XCTAssertEqual(hardware.unlockWrites, [true, false])
+        XCTAssertNil(store.persistedLease)
+        XCTAssertEqual(
+            recorder.events.filter { $0.hasPrefix("read-unlock:") }.count,
+            6
+        )
     }
 
     func testPartialActivationFailureRestoresTouchedFansAndDoesNotClaimSuccess() async {
@@ -109,9 +253,91 @@ final class TurboSafetyControllerTests: XCTestCase {
 
         let status = await controller.startTurbo(ownerID: owner)
 
-        XCTAssertEqual(status, TurboStatus(phase: .failedSafeAuto, issue: .readbackMismatch))
+        XCTAssertEqual(status, TurboStatus(phase: .failedSafeAuto, issue: .actualRPMReadbackMismatch))
         XCTAssertEqual(hardware.modes.values.filter { $0 == .manual }.count, 0)
         XCTAssertNil(store.persistedLease)
+    }
+
+    func testActualRPMPolicyAllowsSmallOvershootButRejectsImplausibleReadback() {
+        let policy = TurboSafetyPolicy(maximumActualOvershootFraction: 0.05)
+
+        XCTAssertTrue(policy.isActualRPMPlausible(5_854.90, maximumRPM: 5_777))
+        XCTAssertTrue(policy.isActualRPMPlausible(5_777, maximumRPM: 5_777))
+        XCTAssertFalse(policy.isActualRPMPlausible(6_100, maximumRPM: 5_777))
+        XCTAssertFalse(policy.isActualRPMPlausible(.nan, maximumRPM: 5_777))
+        XCTAssertFalse(policy.isActualRPMPlausible(1_000, maximumRPM: 0))
+    }
+
+    func testActiveWatchdogAllowsSmallOvershootButRestoresOnImplausibleActualRPM() async {
+        let hardware = TurboFanHardwareSpy()
+        let store = TurboLeaseStoreSpy()
+        let controller = makeController(hardware: hardware, store: store)
+
+        let active = await controller.startTurbo(ownerID: owner)
+        hardware.actualSequences = [0: [5_800], 1: [5_900]]
+        let tolerated = await controller.watchdogTick()
+        hardware.actualSequences = [0: [6_100], 1: [5_900]]
+        let rejected = await controller.watchdogTick()
+
+        XCTAssertEqual(active.phase, .active)
+        XCTAssertEqual(tolerated.phase, .active)
+        XCTAssertEqual(
+            rejected,
+            TurboStatus(phase: .failedSafeAuto, issue: .actualRPMReadbackMismatch)
+        )
+        XCTAssertEqual(hardware.modes.values.filter { $0 == .manual }.count, 0)
+        XCTAssertNil(store.persistedLease)
+    }
+
+    func testModeTargetAndActualReadbackFailuresRemainDistinct() async {
+        let modeHardware = TurboFanHardwareSpy()
+        modeHardware.manualModeDoesNotStickIndex = 0
+        let modeController = makeController(
+            hardware: modeHardware,
+            store: TurboLeaseStoreSpy()
+        )
+        let modeStatus = await modeController.startTurbo(ownerID: owner)
+        XCTAssertEqual(modeStatus.issue, .modeReadbackMismatch)
+
+        let targetHardware = TurboFanHardwareSpy()
+        targetHardware.targetWriteDoesNotStickIndex = 1
+        let targetController = makeController(
+            hardware: targetHardware,
+            store: TurboLeaseStoreSpy()
+        )
+        let targetStatus = await targetController.startTurbo(ownerID: owner)
+        XCTAssertEqual(targetStatus.issue, .targetReadbackMismatch)
+
+        let actualHardware = TurboFanHardwareSpy()
+        actualHardware.actualSequences = [0: [1_000], 1: [1_100]]
+        let actualController = makeController(
+            hardware: actualHardware,
+            store: TurboLeaseStoreSpy()
+        )
+        let actualStatus = await actualController.startTurbo(ownerID: owner)
+        XCTAssertEqual(actualStatus.issue, .actualRPMReadbackMismatch)
+    }
+
+    func testActualReadbackDiagnosticContainsEveryDynamicFan() async {
+        let hardware = TurboFanHardwareSpy()
+        hardware.actualSequences = [0: [1_020], 1: [1_130]]
+        let diagnostics = TurboDiagnosticRecorder()
+        let controller = makeController(
+            hardware: hardware,
+            store: TurboLeaseStoreSpy(),
+            diagnostics: diagnostics
+        )
+
+        _ = await controller.startTurbo(ownerID: owner)
+
+        let failedSamples = try? XCTUnwrap(
+            diagnostics.events.compactMap { event -> [TurboFanDiagnosticSample]? in
+                guard case let .actualRPMReadbackFailed(samples) = event else { return nil }
+                return samples
+            }.last
+        )
+        XCTAssertEqual(failedSamples?.map(\.fanIndex), [0, 1])
+        XCTAssertEqual(failedSamples?.map(\.actualRPM), [1_020, 1_130])
     }
 
     func testDeadlineDisconnectAndWakeEachRestoreAutomaticMode() async {
@@ -144,6 +370,43 @@ final class TurboSafetyControllerTests: XCTestCase {
         _ = await wakeController.startTurbo(ownerID: owner)
         let woke = await wakeController.systemDidWake()
         XCTAssertEqual(woke, .inactive())
+    }
+
+    func testActiveWatchdogReassertsMaximumAfterSystemReclaimsModeAndTarget() async {
+        let hardware = TurboFanHardwareSpy()
+        let controller = makeController(
+            hardware: hardware,
+            store: TurboLeaseStoreSpy()
+        )
+        let active = await controller.startTurbo(ownerID: owner)
+        hardware.modes[0] = .system
+        hardware.targets[0] = 0
+
+        let reconciled = await controller.watchdogTick()
+
+        XCTAssertEqual(active.phase, .active)
+        XCTAssertEqual(reconciled.phase, .active)
+        XCTAssertEqual(hardware.modes[0], .manual)
+        XCTAssertEqual(hardware.targets[0], hardware.fans[0].maximumRPM)
+        XCTAssertEqual(hardware.manualWrites.filter { $0 == 0 }.count, 2)
+        XCTAssertEqual(hardware.maximumTargetWrites.filter { $0 == 0 }.count, 2)
+    }
+
+    func testActiveWatchdogRestoresWhenClaimedThermalManagerUnlockIsLost() async {
+        let hardware = TurboFanHardwareSpy()
+        hardware.modes = [0: .system, 1: .system]
+        let store = TurboLeaseStoreSpy()
+        let controller = makeController(hardware: hardware, store: store)
+        let active = await controller.startTurbo(ownerID: owner)
+        hardware.unlockState = false
+
+        let status = await controller.watchdogTick()
+
+        XCTAssertEqual(active.phase, .active)
+        XCTAssertEqual(status, TurboStatus(phase: .failedSafeAuto, issue: .modeReadbackMismatch))
+        XCTAssertEqual(hardware.modes[0], .automatic)
+        XCTAssertEqual(hardware.modes[1], .automatic)
+        XCTAssertNil(store.persistedLease)
     }
 
     func testMonotonicDeadlineStillExpiresAfterWallClockMovesBackward() async {
@@ -186,6 +449,46 @@ final class TurboSafetyControllerTests: XCTestCase {
         XCTAssertNil(store.persistedLease)
     }
 
+    func testRestoreAcceptsThermalManagerReclaimingSystemMode() async {
+        let hardware = TurboFanHardwareSpy()
+        hardware.automaticModeAfterWrite = .system
+        let store = TurboLeaseStoreSpy()
+        let controller = makeController(hardware: hardware, store: store)
+
+        let active = await controller.startTurbo(ownerID: owner)
+        let stopped = await controller.stopTurbo()
+
+        XCTAssertEqual(active.phase, .active)
+        XCTAssertEqual(stopped, .inactive())
+        XCTAssertEqual(hardware.modes[0], .system)
+        XCTAssertEqual(hardware.modes[1], .system)
+        XCTAssertNil(store.persistedLease)
+    }
+
+    func testRestartReassertsThermalManagerReleaseBeforeClearingLease() async {
+        let persisted = TurboLease(
+            startedAt: Date(timeIntervalSince1970: 30_000),
+            deadline: Date(timeIntervalSince1970: 30_600),
+            touchedFans: [
+                TurboLeaseFan(index: 0, modeKey: "F0Md"),
+                TurboLeaseFan(index: 1, modeKey: "F1Md"),
+            ],
+            claimedThermalManagerUnlock: true
+        )
+        let hardware = TurboFanHardwareSpy()
+        hardware.modes = [0: .system, 1: .system]
+        hardware.unlockState = false
+        let store = TurboLeaseStoreSpy(initialLease: persisted)
+        let controller = makeController(hardware: hardware, store: store)
+
+        let status = await controller.bootstrap()
+
+        XCTAssertEqual(status, .inactive())
+        XCTAssertTrue(hardware.automaticWrites.isEmpty)
+        XCTAssertEqual(hardware.unlockWrites, [false])
+        XCTAssertNil(store.persistedLease)
+    }
+
     func testRecoveryFailureKeepsLeaseForWatchdogRetry() async {
         let hardware = TurboFanHardwareSpy()
         hardware.automaticWriteAlwaysFails = true
@@ -193,12 +496,20 @@ final class TurboSafetyControllerTests: XCTestCase {
         let controller = makeController(hardware: hardware, store: store)
 
         _ = await controller.startTurbo(ownerID: owner)
-        let status = await controller.stopTurbo()
+        let failed = await controller.stopTurbo()
 
-        XCTAssertEqual(status.phase, .failedSafeAuto)
-        XCTAssertEqual(status.issue, .recoveryFailed)
+        XCTAssertEqual(failed.phase, .failedSafeAuto)
+        XCTAssertEqual(failed.issue, .recoveryFailed)
         XCTAssertNotNil(store.persistedLease)
         XCTAssertEqual(store.removeCount, 0)
+
+        hardware.automaticWriteAlwaysFails = false
+        let recovered = await controller.watchdogTick()
+
+        XCTAssertEqual(recovered, .inactive())
+        XCTAssertNil(store.persistedLease)
+        XCTAssertEqual(store.removeCount, 1)
+        XCTAssertTrue(hardware.modes.values.allSatisfy(\.isAppleManaged))
     }
 
     func testLeasePersistenceFailurePreventsAllSMCWrites() async {
@@ -218,7 +529,8 @@ final class TurboSafetyControllerTests: XCTestCase {
     private func makeController(
         hardware: TurboFanHardwareSpy,
         store: TurboLeaseStoreSpy,
-        clock: TurboClockSpy = TurboClockSpy(now: Date(timeIntervalSince1970: 1_000))
+        clock: TurboClockSpy = TurboClockSpy(now: Date(timeIntervalSince1970: 1_000)),
+        diagnostics: any TurboDiagnosticSink = NoOpTurboDiagnosticSink()
     ) -> TurboSafetyController {
         TurboSafetyController(
             hardware: hardware,
@@ -226,8 +538,11 @@ final class TurboSafetyControllerTests: XCTestCase {
             clock: clock,
             policy: TurboSafetyPolicy(
                 unlockSettleDelay: 0,
+                unlockClaimStableReadCount: 1,
                 manualModeRetryCount: 3,
                 manualModeRetryDelay: 0,
+                activeReconciliationRetryCount: 2,
+                activeReconciliationRetryDelay: 0,
                 restoreRetryCount: 2,
                 restoreRetryDelay: 0,
                 actualReadbackAttemptCount: 2,
@@ -235,8 +550,20 @@ final class TurboSafetyControllerTests: XCTestCase {
                 minimumActualRiseRPM: 100,
                 maximumTargetToleranceRPM: 1,
                 alreadyAtMaximumFraction: 0.9
-            )
+            ),
+            diagnosticSink: diagnostics
         )
+    }
+}
+
+private final class TurboDiagnosticRecorder: TurboDiagnosticSink, @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [TurboDiagnosticEvent] = []
+
+    var events: [TurboDiagnosticEvent] { lock.withLock { storage } }
+
+    func record(_ event: TurboDiagnosticEvent) {
+        lock.withLock { storage.append(event) }
     }
 }
 
@@ -289,11 +616,13 @@ private final class TurboLeaseStoreSpy: TurboLeaseStore, @unchecked Sendable {
 
 private final class TurboClockSpy: TurboSafetyClock, @unchecked Sendable {
     private let lock = NSLock()
+    private let recorder: TurboEventRecorder?
     private var current: Date
     private var monotonic: TimeInterval = 1_000
 
-    init(now: Date) {
+    init(now: Date, recorder: TurboEventRecorder? = nil) {
         current = now
+        self.recorder = recorder
     }
 
     func now() -> Date {
@@ -305,6 +634,7 @@ private final class TurboClockSpy: TurboSafetyClock, @unchecked Sendable {
     }
 
     func sleep(for duration: TimeInterval) async throws {
+        recorder?.append("sleep:\(duration)")
         advance(by: duration)
     }
 
@@ -341,11 +671,17 @@ private final class TurboFanHardwareSpy: TurboFanHardware, @unchecked Sendable {
     var actualSequences: [Int: [Double]] = [0: [5_200], 1: [5_300]]
     var manualFailuresRemaining: [Int: Int] = [:]
     var targetWriteFailureIndex: Int?
+    var manualModeDoesNotStickIndex: Int?
+    var targetWriteDoesNotStickIndex: Int?
     var automaticWriteAlwaysFails = false
+    var automaticModeAfterWrite: TurboFanMode = .automatic
     var unlockState: Bool? = false
+    var unlockReadSequence: [Bool?] = []
+    var recordUnlockReads = false
     private(set) var manualWrites: [Int] = []
     private(set) var automaticWrites: [Int] = []
     private(set) var maximumTargetWrites: [Int] = []
+    private(set) var unlockWrites: [Bool] = []
 
     init(recorder: TurboEventRecorder? = nil) {
         self.recorder = recorder
@@ -367,7 +703,9 @@ private final class TurboFanHardwareSpy: TurboFanHardware, @unchecked Sendable {
                 manualFailuresRemaining[fan.index, default: 0] -= 1
                 throw TurboFanHardwareError.thermalManagerBusy
             }
-            modes[fan.index] = .manual
+            if manualModeDoesNotStickIndex != fan.index {
+                modes[fan.index] = .manual
+            }
         }
     }
 
@@ -378,7 +716,7 @@ private final class TurboFanHardwareSpy: TurboFanHardware, @unchecked Sendable {
             if automaticWriteAlwaysFails {
                 throw TurboFanHardwareError.writeFailed
             }
-            modes[fan.index] = .automatic
+            modes[fan.index] = automaticModeAfterWrite
         }
     }
 
@@ -389,7 +727,9 @@ private final class TurboFanHardwareSpy: TurboFanHardware, @unchecked Sendable {
             if targetWriteFailureIndex == fan.index {
                 throw TurboFanHardwareError.writeFailed
             }
-            targets[fan.index] = fan.maximumRPM
+            if targetWriteDoesNotStickIndex != fan.index {
+                targets[fan.index] = fan.maximumRPM
+            }
         }
     }
 
@@ -409,12 +749,25 @@ private final class TurboFanHardwareSpy: TurboFanHardware, @unchecked Sendable {
     }
 
     func readThermalManagerUnlock() throws -> Bool? {
-        lock.withLock { unlockState }
+        lock.withLock {
+            let result: Bool?
+            if !unlockReadSequence.isEmpty {
+                result = unlockReadSequence.removeFirst()
+            } else {
+                result = unlockState
+            }
+            if recordUnlockReads {
+                let value = result.map(String.init) ?? "nil"
+                recorder?.append("read-unlock:\(value)")
+            }
+            return result
+        }
     }
 
     func writeThermalManagerUnlock(_ enabled: Bool) throws {
         lock.withLock {
             recorder?.append("unlock:\(enabled)")
+            unlockWrites.append(enabled)
             unlockState = enabled
         }
     }

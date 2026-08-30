@@ -95,7 +95,7 @@ struct ContentView: View {
                 .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("P 核平均温度")
+                Text("P 核热点温度")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.82))
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -144,7 +144,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             LiveReadingRow(
                 symbol: "cpu",
-                title: "P 核平均温度",
+                title: "P 核热点温度",
                 value: temperatureAverageWithUnit,
                 tint: .orange
             )
@@ -384,7 +384,7 @@ struct ContentView: View {
 
     private var temperatureAverageText: String {
         guard let summary = monitor.performanceCoreTemperatureSummary else { return "未知" }
-        return summary.average.formatted(.number.precision(.fractionLength(1)))
+        return summary.reportedValue.formatted(.number.precision(.fractionLength(1)))
     }
 
     private var temperatureAverageWithUnit: String {

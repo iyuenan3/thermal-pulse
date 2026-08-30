@@ -2,6 +2,34 @@ import XCTest
 @testable import ThermalPulseCore
 
 final class TurboCoordinatorTests: XCTestCase {
+    func testFanControlMessageTracksTrustedTurboState() {
+        XCTAssertEqual(TurboStatus.inactive().fanControlUserMessage, "苹果自动控制")
+        XCTAssertEqual(
+            TurboStatus.inactive(issue: .externalControllerDetected).fanControlUserMessage,
+            "其他工具手动控制"
+        )
+        XCTAssertEqual(
+            TurboStatus.inactive(issue: .helperUnavailable).fanControlUserMessage,
+            "控制状态待确认"
+        )
+        XCTAssertEqual(
+            TurboStatus(phase: .activating).fanControlUserMessage,
+            "正在切换到 Turbo"
+        )
+        XCTAssertEqual(
+            TurboStatus(phase: .active).fanControlUserMessage,
+            "Turbo 全速控制"
+        )
+        XCTAssertEqual(
+            TurboStatus(phase: .restoring).fanControlUserMessage,
+            "正在恢复苹果自动控制"
+        )
+        XCTAssertEqual(
+            TurboStatus(phase: .failedSafeAuto, issue: .readbackMismatch).fanControlUserMessage,
+            "控制状态待确认"
+        )
+    }
+
     func testUnavailableClientKeepsAutomaticModeAndBlocksStart() async {
         let coordinator = TurboCoordinator(client: UnavailableTurboClient())
 
