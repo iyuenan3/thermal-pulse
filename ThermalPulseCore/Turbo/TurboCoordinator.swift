@@ -44,7 +44,7 @@ public enum TurboIssue: String, Error, Sendable, Equatable {
         case .writePathUnavailable:
             "当前构建尚未启用 Turbo 写入链路"
         case .callerUnauthorized:
-            "App 签名未通过 helper 校验"
+            "App 身份未通过 helper 校验"
         case .incompatibleProtocol:
             "App 与 helper 版本不兼容"
         case .smcWriteFailed:
@@ -134,6 +134,8 @@ public protocol TurboClient: Sendable {
 
 public enum TurboHelperRegistrationIssue: String, Sendable, Equatable {
     case invalidSignature
+    case invalidInstallation
+    case installerUnavailable
     case registrationFailed
     case upgradeFailed
 
@@ -141,6 +143,10 @@ public enum TurboHelperRegistrationIssue: String, Sendable, Equatable {
         switch self {
         case .invalidSignature:
             "当前签名不满足系统 helper 注册要求"
+        case .invalidInstallation:
+            "Turbo helper 安装身份无效或已变化"
+        case .installerUnavailable:
+            "当前 App 缺少 Turbo helper 安装器"
         case .registrationFailed:
             "系统没有接受 Turbo helper 注册"
         case .upgradeFailed:
@@ -154,12 +160,14 @@ public enum TurboHelperRegistrationState: Sendable, Equatable {
     case notRegistered
     case registering
     case requiresApproval
+    case manualInstallationRequired
+    case installerOpened
     case enabled
     case notFound
     case failed(TurboHelperRegistrationIssue)
 
     public var canRegister: Bool {
-        self == .notRegistered || self == .notFound
+        self == .notRegistered || self == .notFound || self == .manualInstallationRequired
     }
 
     public var canOpenSystemSettings: Bool {
@@ -176,6 +184,10 @@ public enum TurboHelperRegistrationState: Sendable, Equatable {
             "正在向 macOS 注册 Turbo helper"
         case .requiresApproval:
             "需要在系统设置中允许 ThermalPulse 后台项目"
+        case .manualInstallationRequired:
+            "需要管理员安装当前版本的 Turbo helper"
+        case .installerOpened:
+            "安装器已在 Terminal 中打开，完成后请重新检查"
         case .enabled:
             "Turbo helper 已获系统允许"
         case .notFound:

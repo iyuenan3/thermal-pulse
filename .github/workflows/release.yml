@@ -90,6 +90,8 @@ jobs:
 
           app_path="${DERIVED_DATA}/Build/Products/Release/ThermalPulse.app"
           helper_path="${app_path}/Contents/Resources/ThermalPulseHelper"
+          installer_path="${app_path}/Contents/Resources/Install Turbo Helper.command"
+          manual_plist_path="${app_path}/Contents/Resources/io.github.iyuenan3.thermalpulse.helper.manual.plist"
           artifact_dir="${RUNNER_TEMP}/artifacts"
           staging_dir="${RUNNER_TEMP}/dmg-staging"
           mount_dir="${RUNNER_TEMP}/dmg-mount"
@@ -97,6 +99,9 @@ jobs:
 
           test -d "${app_path}"
           test -x "${helper_path}"
+          test -x "${installer_path}"
+          bash -n "${installer_path}"
+          plutil -lint "${manual_plist_path}"
 
           bundle_version="$(plutil -extract CFBundleShortVersionString raw "${app_path}/Contents/Info.plist")"
           if [[ "${bundle_version}" != "${RELEASE_VERSION}" ]]; then
@@ -104,9 +109,20 @@ jobs:
             exit 1
           fi
 
-          codesign --force --sign - "${helper_path}"
-          codesign --force --sign - "${app_path}"
+          codesign --force --options runtime --sign - "${helper_path}"
+          codesign --force --options runtime --sign - "${app_path}"
           codesign --verify --deep --strict --verbose=2 "${app_path}"
+
+          app_cdhash="$(codesign -d --verbose=4 "${app_path}" 2>&1 | awk -F= '$1 == "CDHash" { print tolower($2); exit }')"
+          helper_cdhash="$(codesign -d --verbose=4 "${helper_path}" 2>&1 | awk -F= '$1 == "CDHash" { print tolower($2); exit }')"
+          test "${#app_cdhash}" -eq 40
+          test "${#helper_cdhash}" -eq 40
+          codesign --verify --strict \
+            -R="identifier \"io.github.iyuenan3.thermalpulse\" and cdhash H\"${app_cdhash}\"" \
+            "${app_path}"
+          codesign --verify --strict \
+            -R="identifier \"io.github.iyuenan3.thermalpulse.helper\" and cdhash H\"${helper_cdhash}\"" \
+            "${helper_path}"
 
           mkdir -p "${artifact_dir}" "${staging_dir}" "${mount_dir}"
           ditto "${app_path}" "${staging_dir}/ThermalPulse.app"
@@ -152,14 +168,14 @@ jobs:
           printf '%s\n' \
             "# ThermalPulse ${GITHUB_REF_NAME}" \
             "" \
-            "公开预览版本，支持 macOS 26 及以上的 Apple 芯片 MacBook Pro。" \
+            "预发布测试版本，支持 macOS 26 及以上的 Apple 芯片 MacBook Pro。" \
             "" \
-            "- 新增正式 ThermalPulse App 图标。" \
             "- 菜单栏显示 P 核、E 核温度和动态风扇转速。" \
             "- 展开面板显示电池温度、5 分钟温度曲线、系统热状态和全部风扇。" \
             "- 单风扇转速居中显示，双风扇转速上下显示。" \
+            "- 新增协议 v8 管理员安装器，以固定 App 与受限 helper 的代码哈希。" \
             "" \
-            "此公开 DMG 使用 ad hoc 签名且未公证。普通只读监控可用，但因没有 Developer ID Team ID，Turbo 按安全设计保持不可用。" \
+            "此公开 DMG 使用 ad hoc 签名且未公证。只读监控无需管理员权限。Turbo 需要把 App 拖入“应用程序”后，在 App 内打开管理员安装器；安装器不会在安装时启动 Turbo。协议 v8 的 root 安装、XPC 和真实 Turbo 尚待用户实机验收，CI 发布成功不代表 Turbo 已验收。" \
             > "${notes_path}"
 
           gh release create "${GITHUB_REF_NAME}" \
@@ -170,3 +186,30 @@ jobs:
             --notes-file "${notes_path}" \
             --prerelease \
             --verify-tag
+
+      - name: Remove binary assets from older releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh release list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --limit 100 \
+            --json tagName \
+            --jq '.[].tagName' \
+            | while IFS= read -r release_tag; do
+                [[ -n "${release_tag}" && "${release_tag}" != "${GITHUB_REF_NAME}" ]] || continue
+                gh release view "${release_tag}" \
+                  --repo "${GITHUB_REPOSITORY}" \
+                  --json assets \
+                  --jq '.assets[].name' \
+                  | while IFS= read -r asset_name; do
+                      if [[ "${asset_name}" =~ ^ThermalPulse-v[0-9]+\.[0-9]+\.[0-9]+-macos-arm64\.dmg(\.sha256)?$ ]]; then
+                        gh release delete-asset "${release_tag}" "${asset_name}" \
+                          --repo "${GITHUB_REPOSITORY}" \
+                          --yes
+                      fi
+                    done
+              done

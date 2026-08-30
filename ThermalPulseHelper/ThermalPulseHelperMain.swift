@@ -11,12 +11,11 @@ enum ThermalPulseHelperMain {
     )
 
     static func main() {
-        guard let teamIdentifier = CurrentCodeSignature.teamIdentifier(),
-              let appRequirement = try? PeerCodeSigningRequirement.app(
-                  teamIdentifier: teamIdentifier
-              )
-        else {
-            logger.fault("helper refused to start without a trusted Team ID")
+        let appRequirement: String
+        do {
+            appRequirement = try TurboPeerTrustResolver.appRequirementForCurrentHelper()
+        } catch {
+            logger.fault("helper refused to start without a trusted peer identity")
             return
         }
 

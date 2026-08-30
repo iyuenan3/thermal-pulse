@@ -64,7 +64,7 @@ final class ThermalMonitorViewModel: ObservableObject {
     private let turboXPCClient: TurboXPCClient
     private let turboCoordinator: TurboCoordinator
     private let turboHelperRegistrationCoordinator = TurboHelperRegistrationCoordinator(
-        client: SMAppServiceTurboHelperRegistrationClient()
+        client: AdaptiveTurboHelperRegistrationClient()
     )
     private var samplingGeneration = UUID()
     private var turboStatusPollingTask: Task<Void, Never>?
@@ -325,7 +325,8 @@ final class ThermalMonitorViewModel: ObservableObject {
             synchronizeTurboStatus()
         case .requiresApproval:
             turboStatus = .inactive(issue: .helperNotApproved)
-        case .checking, .notRegistered, .registering, .notFound, .failed:
+        case .checking, .notRegistered, .registering, .notFound,
+             .manualInstallationRequired, .installerOpened, .failed:
             turboStatus = .inactive(issue: .helperUnavailable)
         }
     }

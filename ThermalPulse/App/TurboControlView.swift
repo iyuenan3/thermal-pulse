@@ -13,7 +13,7 @@ struct TurboControlView: View {
 
         var title: String {
             switch self {
-            case .registerHelper: "注册 Turbo 系统 helper？"
+            case .registerHelper: "配置 Turbo 系统 helper？"
             case .upgradeHelper: "升级 Turbo 系统 helper？"
             }
         }
@@ -21,7 +21,7 @@ struct TurboControlView: View {
         var message: String {
             switch self {
             case .registerHelper:
-                "macOS 将登记一个仅服务 ThermalPulse 的 LaunchDaemon。注册后仍需由管理员在系统设置中明确允许，本操作不会立即写入 SMC。"
+                "付费开发者签名构建会向 macOS 注册服务。公开 ad hoc 构建会打开 Terminal 安装器，由管理员固定当前 App 与 helper 的代码哈希。本操作不会启动 Turbo，也不会写入 SMC。"
             case .upgradeHelper:
                 "App 会先停止并注销旧 helper，再注册当前签名版本。升级不会启动 Turbo，也不会写入 SMC。"
             }
@@ -29,7 +29,7 @@ struct TurboControlView: View {
 
         var actionTitle: String {
             switch self {
-            case .registerHelper: "确认注册"
+            case .registerHelper: "继续"
             case .upgradeHelper: "确认升级"
             }
         }
@@ -153,6 +153,10 @@ struct TurboControlView: View {
             progressContent(title: monitor.turboHelperRegistrationState.userMessage)
         case .notRegistered, .notFound:
             notRegisteredContent
+        case .manualInstallationRequired:
+            manualInstallationContent
+        case .installerOpened:
+            installerOpenedContent
         case .registering:
             progressContent(title: monitor.turboHelperRegistrationState.userMessage)
         case .requiresApproval:
@@ -185,6 +189,50 @@ struct TurboControlView: View {
             .tint(.orange)
             .keyboardShortcut("r", modifiers: [.command, .shift])
             .accessibilityIdentifier("turbo.helper.register")
+        }
+    }
+
+    private var manualInstallationContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(
+                monitor.turboHelperRegistrationState.userMessage,
+                systemImage: "lock.shield"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Text("安装器会请求管理员密码，并只安装当前版本的受限 helper。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            Button {
+                pendingConfirmation = .registerHelper
+            } label: {
+                Label("打开管理员安装器", systemImage: "terminal.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: style == .compact ? 38 : 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .accessibilityIdentifier("turbo.helper.install")
+        }
+    }
+
+    private var installerOpenedContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(
+                monitor.turboHelperRegistrationState.userMessage,
+                systemImage: "terminal"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Button("重新检查状态") {
+                monitor.refreshTurboHelperRegistration()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
         }
     }
 
@@ -224,7 +272,7 @@ struct TurboControlView: View {
             .font(.caption)
             .foregroundStyle(.red)
 
-            Text("当前构建不会绕过 macOS 的签名、注册或管理员批准要求。")
+            Text("helper 仅接受同 Team 签名，或由管理员安装器固定哈希的当前 App。")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -249,6 +297,7 @@ struct TurboControlView: View {
 
             if monitor.turboStatus.issue == .writePathUnavailable
                 || monitor.turboStatus.issue == .incompatibleProtocol
+                || monitor.turboStatus.issue == .communicationFailure
             {
                 Button {
                     pendingConfirmation = .upgradeHelper

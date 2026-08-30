@@ -6,7 +6,12 @@ public enum ThermalPulseIdentity {
     public static let helperIdentifier = "io.github.iyuenan3.thermalpulse.helper"
     public static let machServiceName = helperIdentifier
     public static let launchDaemonPlistName = "\(helperIdentifier).plist"
-    public static let turboProtocolVersion = 7
+    public static let turboProtocolVersion = 8
+    public static let installedAppBundlePath = "/Applications/ThermalPulse.app"
+    public static let installedHelperExecutablePath =
+        "/Library/PrivilegedHelperTools/io.github.iyuenan3.thermalpulse.helper"
+    public static let installationManifestPath =
+        "/Library/Application Support/ThermalPulse/installation.plist"
 }
 
 public enum PeerCodeSigningRequirement {
@@ -24,6 +29,20 @@ public enum PeerCodeSigningRequirement {
         )
     }
 
+    public static func app(codeDirectoryHash: String) throws -> String {
+        try pinnedRequirement(
+            identifier: ThermalPulseIdentity.appBundleIdentifier,
+            codeDirectoryHash: codeDirectoryHash
+        )
+    }
+
+    public static func helper(codeDirectoryHash: String) throws -> String {
+        try pinnedRequirement(
+            identifier: ThermalPulseIdentity.helperIdentifier,
+            codeDirectoryHash: codeDirectoryHash
+        )
+    }
+
     private static func requirement(
         identifier: String,
         teamIdentifier: String
@@ -37,14 +56,39 @@ public enum PeerCodeSigningRequirement {
 
         return "anchor apple generic and identifier \"\(identifier)\" and certificate leaf[subject.OU] = \"\(teamIdentifier)\""
     }
+
+    private static func pinnedRequirement(
+        identifier: String,
+        codeDirectoryHash: String
+    ) throws -> String {
+        let normalizedHash = codeDirectoryHash.lowercased()
+        let isSafeHash = normalizedHash.count == 40 && normalizedHash.unicodeScalars.allSatisfy {
+            CharacterSet(charactersIn: "0123456789abcdef").contains($0)
+        }
+        guard isSafeHash else {
+            throw TurboIssue.callerUnauthorized
+        }
+
+        return "identifier \"\(identifier)\" and cdhash H\"\(normalizedHash)\""
+    }
 }
 
 public enum CurrentCodeSignature {
-    public static func teamIdentifier() -> String? {
-        resolvedTeamIdentifier
+    public static func identity() -> TurboCodeIdentity? {
+        resolvedIdentity
     }
 
-    private static let resolvedTeamIdentifier: String? = {
+    public static func freshIdentity() -> TurboCodeIdentity? {
+        resolveIdentity()
+    }
+
+    public static func teamIdentifier() -> String? {
+        resolvedIdentity?.teamIdentifier
+    }
+
+    private static let resolvedIdentity = resolveIdentity()
+
+    private static func resolveIdentity() -> TurboCodeIdentity? {
         var code: SecCode?
         guard SecCodeCopySelf(SecCSFlags(), &code) == errSecSuccess,
               let code
@@ -82,8 +126,18 @@ public enum CurrentCodeSignature {
             return nil
         }
 
-        return dictionary[kSecCodeInfoTeamIdentifier as String] as? String
-    }()
+        guard let identifier = dictionary[kSecCodeInfoIdentifier as String] as? String,
+              let codeDirectoryHash = dictionary[kSecCodeInfoUnique as String] as? Data
+        else {
+            return nil
+        }
+
+        return TurboCodeIdentity(
+            identifier: identifier,
+            codeDirectoryHash: codeDirectoryHash.map { String(format: "%02x", $0) }.joined(),
+            teamIdentifier: dictionary[kSecCodeInfoTeamIdentifier as String] as? String
+        )
+    }
 }
 
 @objc(ThermalPulseTurboXPCStatusPayload)

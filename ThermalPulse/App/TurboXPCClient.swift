@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import OSLog
 import ServiceManagement
@@ -109,6 +110,89 @@ final class SMAppServiceTurboHelperRegistrationClient: TurboHelperRegistrationCl
     }
 }
 
+@MainActor
+final class ManualTurboHelperInstallationClient: TurboHelperRegistrationClient {
+    typealias InstallerOpener = (URL) -> Bool
+
+    private let installerURL: URL?
+    private let installerOpener: InstallerOpener
+
+    init(
+        installerURL: URL? = Bundle.main.url(
+            forResource: "Install Turbo Helper",
+            withExtension: "command"
+        ),
+        installerOpener: @escaping InstallerOpener = { NSWorkspace.shared.open($0) }
+    ) {
+        self.installerURL = installerURL
+        self.installerOpener = installerOpener
+    }
+
+    func currentState() -> TurboHelperRegistrationState {
+        guard let identity = CurrentCodeSignature.freshIdentity() else {
+            return .failed(.invalidInstallation)
+        }
+        do {
+            _ = try TurboPeerTrustResolver.helperRequirementForCurrentApp(identity: identity)
+            return .enabled
+        } catch TurboInstallationIdentityError.notInstalled {
+            return .manualInstallationRequired
+        } catch TurboInstallationIdentityError.currentExecutableMismatch {
+            return .manualInstallationRequired
+        } catch {
+            return .failed(.invalidInstallation)
+        }
+    }
+
+    func register() -> TurboHelperRegistrationState {
+        guard let identity = CurrentCodeSignature.freshIdentity(),
+              identity.identifier == ThermalPulseIdentity.appBundleIdentifier,
+              identity.teamIdentifier == nil
+        else {
+            return .failed(.invalidInstallation)
+        }
+        guard let installerURL, installerOpener(installerURL) else {
+            return .failed(.installerUnavailable)
+        }
+        return .installerOpened
+    }
+
+    func replaceRegistration() async -> TurboHelperRegistrationState {
+        register()
+    }
+
+    func openSystemSettings() {}
+}
+
+@MainActor
+final class AdaptiveTurboHelperRegistrationClient: TurboHelperRegistrationClient {
+    private let client: any TurboHelperRegistrationClient
+
+    init() {
+        if CurrentCodeSignature.teamIdentifier() == nil {
+            client = ManualTurboHelperInstallationClient()
+        } else {
+            client = SMAppServiceTurboHelperRegistrationClient()
+        }
+    }
+
+    func currentState() -> TurboHelperRegistrationState {
+        client.currentState()
+    }
+
+    func register() -> TurboHelperRegistrationState {
+        client.register()
+    }
+
+    func replaceRegistration() async -> TurboHelperRegistrationState {
+        await client.replaceRegistration()
+    }
+
+    func openSystemSettings() {
+        client.openSystemSettings()
+    }
+}
+
 final class TurboXPCClient: TurboClient, @unchecked Sendable {
     private static let startTimeout: TimeInterval = 70
     private static let stopTimeout: TimeInterval = 12
@@ -150,13 +234,12 @@ final class TurboXPCClient: TurboClient, @unchecked Sendable {
     }
 
     private func perform(_ request: Request) async throws -> TurboStatus {
-        guard let teamIdentifier = CurrentCodeSignature.teamIdentifier() else {
+        let requirement: String
+        do {
+            requirement = try TurboPeerTrustResolver.helperRequirementForCurrentApp()
+        } catch {
             throw TurboIssue.helperUnavailable
         }
-
-        let requirement = try PeerCodeSigningRequirement.helper(
-            teamIdentifier: teamIdentifier
-        )
 
         return try await withCheckedThrowingContinuation { continuation in
             let pending = PendingTurboXPCRequest(continuation: continuation)

@@ -21,6 +21,7 @@
 		30000000000000000000000C /* TurboCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000D /* TurboCoordinator.swift */; };
 		30000000000000000000000D /* TurboXPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000E /* TurboXPCProtocol.swift */; };
 		30000000000000000000000E /* TurboSafetyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21000000000000000000000F /* TurboSafetyController.swift */; };
+		30000000000000000000000F /* TurboInstallationIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210000000000000000000010 /* TurboInstallationIdentity.swift */; };
 		300000000000000000000011 /* ThermalPulseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* ThermalPulseApp.swift */; };
 		300000000000000000000012 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* ContentView.swift */; };
 		300000000000000000000013 /* ThermalMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* ThermalMonitorViewModel.swift */; };
@@ -54,6 +55,8 @@
 		300000000000000000000040 /* ThermalPulseHelper in Copy Helper */ = {isa = PBXBuildFile; fileRef = 240000000000000000000004 /* ThermalPulseHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		300000000000000000000041 /* io.github.iyuenan3.thermalpulse.helper.plist in Copy LaunchDaemon Plist */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* io.github.iyuenan3.thermalpulse.helper.plist */; };
 		300000000000000000000042 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* Assets.xcassets */; };
+		300000000000000000000043 /* Install Turbo Helper.command in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* Install Turbo Helper.command */; };
+		300000000000000000000044 /* io.github.iyuenan3.thermalpulse.helper.manual.plist in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* io.github.iyuenan3.thermalpulse.helper.manual.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -121,6 +124,8 @@
 		200000000000000000000006 /* TurboXPCClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboXPCClient.swift; sourceTree = "<group>"; };
 		200000000000000000000007 /* io.github.iyuenan3.thermalpulse.helper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = io.github.iyuenan3.thermalpulse.helper.plist; sourceTree = "<group>"; };
 		200000000000000000000008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		200000000000000000000009 /* Install Turbo Helper.command */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "Install Turbo Helper.command"; sourceTree = "<group>"; };
+		20000000000000000000000A /* io.github.iyuenan3.thermalpulse.helper.manual.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = io.github.iyuenan3.thermalpulse.helper.manual.plist; sourceTree = "<group>"; };
 		210000000000000000000001 /* SMCKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCKey.swift; sourceTree = "<group>"; };
 		210000000000000000000002 /* SMCTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCTypes.swift; sourceTree = "<group>"; };
 		210000000000000000000003 /* SMCValueDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCValueDecoder.swift; sourceTree = "<group>"; };
@@ -136,6 +141,7 @@
 		21000000000000000000000D /* TurboCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboCoordinator.swift; sourceTree = "<group>"; };
 		21000000000000000000000E /* TurboXPCProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboXPCProtocol.swift; sourceTree = "<group>"; };
 		21000000000000000000000F /* TurboSafetyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboSafetyController.swift; sourceTree = "<group>"; };
+		210000000000000000000010 /* TurboInstallationIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurboInstallationIdentity.swift; sourceTree = "<group>"; };
 		220000000000000000000001 /* SMCKeyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCKeyTests.swift; sourceTree = "<group>"; };
 		220000000000000000000002 /* SMCValueDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCValueDecoderTests.swift; sourceTree = "<group>"; };
 		220000000000000000000003 /* SensorClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorClassifierTests.swift; sourceTree = "<group>"; };
@@ -313,6 +319,7 @@
 				21000000000000000000000D /* TurboCoordinator.swift */,
 				21000000000000000000000E /* TurboXPCProtocol.swift */,
 				21000000000000000000000F /* TurboSafetyController.swift */,
+				210000000000000000000010 /* TurboInstallationIdentity.swift */,
 			);
 			path = Turbo;
 			sourceTree = "<group>";
@@ -343,6 +350,8 @@
 			children = (
 				200000000000000000000008 /* Assets.xcassets */,
 				200000000000000000000007 /* io.github.iyuenan3.thermalpulse.helper.plist */,
+				20000000000000000000000A /* io.github.iyuenan3.thermalpulse.helper.manual.plist */,
+				200000000000000000000009 /* Install Turbo Helper.command */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -459,7 +468,7 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		500000000000000000000021 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (300000000000000000000042 /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		500000000000000000000021 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (300000000000000000000042 /* Assets.xcassets in Resources */, 300000000000000000000043 /* Install Turbo Helper.command in Resources */, 300000000000000000000044 /* io.github.iyuenan3.thermalpulse.helper.manual.plist in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
 		500000000000000000000022 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		500000000000000000000023 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		500000000000000000000024 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
@@ -497,6 +506,7 @@
 				30000000000000000000000C /* TurboCoordinator.swift in Sources */,
 				30000000000000000000000D /* TurboXPCProtocol.swift in Sources */,
 				30000000000000000000000E /* TurboSafetyController.swift in Sources */,
+				30000000000000000000000F /* TurboInstallationIdentity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -538,9 +548,9 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		700000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; CURRENT_PROJECT_VERSION = 2; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; MARKETING_VERSION = 0.1.0; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = Debug; };
-		700000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; CURRENT_PROJECT_VERSION = 2; MACOSX_DEPLOYMENT_TARGET = 26.0; MARKETING_VERSION = 0.1.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = Release; };
-		700000000000000000000003 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; CURRENT_PROJECT_VERSION = 2; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; MARKETING_VERSION = 0.1.0; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG THERMALPULSE_HARDWARE_TESTS"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = HardwareProbe; };
+		700000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; CURRENT_PROJECT_VERSION = 3; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; MARKETING_VERSION = 0.1.1; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = Debug; };
+		700000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; CURRENT_PROJECT_VERSION = 3; MACOSX_DEPLOYMENT_TARGET = 26.0; MARKETING_VERSION = 0.1.1; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = Release; };
+		700000000000000000000003 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; CURRENT_PROJECT_VERSION = 3; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 26.0; MARKETING_VERSION = 0.1.1; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG THERMALPULSE_HARDWARE_TESTS"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_STRICT_CONCURRENCY = complete; SWIFT_VERSION = 6.0; }; name = HardwareProbe; };
 		700000000000000000000011 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = Debug; };
 		700000000000000000000012 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = Release; };
 		700000000000000000000013 /* HardwareProbe */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = TC697DMJPE; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = io.github.iyuenan3.thermalpulse; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; }; name = HardwareProbe; };

@@ -15,7 +15,7 @@ final class TurboXPCProtocolTests: XCTestCase {
             ThermalPulseIdentity.machServiceName,
             ThermalPulseIdentity.helperIdentifier
         )
-        XCTAssertEqual(ThermalPulseIdentity.turboProtocolVersion, 7)
+        XCTAssertEqual(ThermalPulseIdentity.turboProtocolVersion, 8)
     }
 
     func testPeerRequirementsPinAppleAnchorIdentifierAndTeam() throws {
@@ -41,6 +41,105 @@ final class TurboXPCProtocolTests: XCTestCase {
         XCTAssertThrowsError(
             try PeerCodeSigningRequirement.helper(teamIdentifier: "TEAM\" or true")
         )
+    }
+
+    func testPinnedPeerRequirementsAcceptOnlyExactCodeDirectoryHash() throws {
+        let hash = String(repeating: "a", count: 40)
+
+        XCTAssertEqual(
+            try PeerCodeSigningRequirement.app(codeDirectoryHash: hash),
+            "identifier \"io.github.iyuenan3.thermalpulse\" and cdhash H\"\(hash)\""
+        )
+        XCTAssertEqual(
+            try PeerCodeSigningRequirement.helper(codeDirectoryHash: hash.uppercased()),
+            "identifier \"io.github.iyuenan3.thermalpulse.helper\" and cdhash H\"\(hash)\""
+        )
+        XCTAssertThrowsError(
+            try PeerCodeSigningRequirement.app(codeDirectoryHash: String(repeating: "a", count: 39))
+        )
+        XCTAssertThrowsError(
+            try PeerCodeSigningRequirement.helper(
+                codeDirectoryHash: "\(String(repeating: "a", count: 39))\""
+            )
+        )
+    }
+
+    func testPinnedInstallationAuthenticatesBothDirections() throws {
+        let appHash = String(repeating: "a", count: 40)
+        let helperHash = String(repeating: "b", count: 40)
+        let manifestURL = try writeManifest(
+            TurboInstallationManifest(
+                appCodeDirectoryHash: appHash,
+                helperCodeDirectoryHash: helperHash,
+                appExecutableSHA256: String(repeating: "c", count: 64),
+                helperExecutableSHA256: String(repeating: "d", count: 64)
+            )
+        )
+        defer { try? FileManager.default.removeItem(at: manifestURL.deletingLastPathComponent()) }
+
+        let helperRequirement = try TurboPeerTrustResolver.helperRequirementForCurrentApp(
+            identity: TurboCodeIdentity(
+                identifier: ThermalPulseIdentity.appBundleIdentifier,
+                codeDirectoryHash: appHash,
+                teamIdentifier: nil
+            ),
+            appBundleURL: URL(fileURLWithPath: ThermalPulseIdentity.installedAppBundlePath),
+            manifestURL: manifestURL,
+            requireRootOwnership: false
+        )
+        let appRequirement = try TurboPeerTrustResolver.appRequirementForCurrentHelper(
+            identity: TurboCodeIdentity(
+                identifier: ThermalPulseIdentity.helperIdentifier,
+                codeDirectoryHash: helperHash,
+                teamIdentifier: nil
+            ),
+            executableURL: URL(
+                fileURLWithPath: ThermalPulseIdentity.installedHelperExecutablePath
+            ),
+            manifestURL: manifestURL,
+            requireRootOwnership: false
+        )
+
+        XCTAssertEqual(
+            helperRequirement,
+            "identifier \"io.github.iyuenan3.thermalpulse.helper\" and cdhash H\"\(helperHash)\""
+        )
+        XCTAssertEqual(
+            appRequirement,
+            "identifier \"io.github.iyuenan3.thermalpulse\" and cdhash H\"\(appHash)\""
+        )
+    }
+
+    func testPinnedInstallationRejectsMovedOrChangedApp() throws {
+        let appHash = String(repeating: "a", count: 40)
+        let manifestURL = try writeManifest(
+            TurboInstallationManifest(
+                appCodeDirectoryHash: appHash,
+                helperCodeDirectoryHash: String(repeating: "b", count: 40),
+                appExecutableSHA256: String(repeating: "c", count: 64),
+                helperExecutableSHA256: String(repeating: "d", count: 64)
+            )
+        )
+        defer { try? FileManager.default.removeItem(at: manifestURL.deletingLastPathComponent()) }
+        let identity = TurboCodeIdentity(
+            identifier: ThermalPulseIdentity.appBundleIdentifier,
+            codeDirectoryHash: String(repeating: "e", count: 40),
+            teamIdentifier: nil
+        )
+
+        XCTAssertThrowsError(
+            try TurboPeerTrustResolver.helperRequirementForCurrentApp(
+                identity: identity,
+                appBundleURL: URL(fileURLWithPath: ThermalPulseIdentity.installedAppBundlePath),
+                manifestURL: manifestURL,
+                requireRootOwnership: false
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? TurboInstallationIdentityError,
+                .currentExecutableMismatch
+            )
+        }
     }
 
     func testSecurePayloadRoundTripPreservesBoundedStatus() throws {
@@ -109,5 +208,19 @@ final class TurboXPCProtocolTests: XCTestCase {
         XCTAssertThrowsError(try payload.domainStatus()) { error in
             XCTAssertEqual(error as? TurboIssue, .incompatibleProtocol)
         }
+    }
+
+    private func writeManifest(_ manifest: TurboInstallationManifest) throws -> URL {
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ThermalPulseTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: false
+        )
+        let url = directoryURL.appendingPathComponent("installation.plist")
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .xml
+        try encoder.encode(manifest).write(to: url, options: .atomic)
+        return url
     }
 }
