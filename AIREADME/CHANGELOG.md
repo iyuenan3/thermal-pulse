@@ -4,6 +4,58 @@
 
 当前已发布版本为 v0.1.0。
 
+## v0.1.1 · 协议 v8 管理员安装测试候选 · 2026-08-31
+
+### Added
+
+- 公开 ad hoc 构建加入用户显式打开的管理员安装器、固定路径 LaunchDaemon plist 和 root-owned 安装身份 manifest。
+- App 与 helper 在没有 Team ID 时使用固定 identifier 与精确 CDHash 双向校验；具备 Developer Team 时继续使用 Apple 签名锚点与同 Team 路径。
+
+### Changed
+
+- 工程 `MARKETING_VERSION` 升级为 `0.1.1`，build number 升级为 3，私有 XPC 协议升级为 v8。
+- GitHub Actions 使用 hardened runtime ad hoc 签名，并在发布成功后只删除其他 Release 中匹配版本化命名规则的 DMG 与 `.sha256`；旧 Release 页面和 tag 保留。
+
+### Release gates
+
+- 普通测试、macOS 26 arm64 Release 构建、安装器 `bash -n`、手动 plist lint、App/helper deep strict、固定 identifier 与精确 CDHash requirement、DMG CRC、只读挂载、版本和 arm64 架构必须全部通过。
+- Release 保持 prerelease，并明确标注 ad hoc、未公证、首次和每次升级需要管理员重新固定哈希。
+
+### Validated
+
+- 本地普通测试共执行 83 项，79 项通过、4 项真实硬件测试按设计跳过、0 项失败。
+- 本地 macOS 26 arm64 Release 构建通过。临时 DMG 完成 hardened runtime ad hoc 签名、双方 40 位 CDHash requirement、CRC、只读挂载、版本 `0.1.1 (3)`、AppIcon 与 arm64 主程序回读。
+- 本地测试 DMG 为 4,202,360 字节，SHA-256 为 `ba68fb553ca2ab5a012b1a807175790f461205a9e482f587484aa7a016c9a521`。该值只对应本地临时产物，官方 GitHub Actions 资产必须发布后重新下载并独立计算。
+
+### Not included
+
+- 发布过程不执行 sudo，不写入 `/Library`，不登记或替换系统 helper，不连接 root XPC，不启动 Turbo，也不写 SMC。
+- v0.1.1 是用户自行安装测试候选。CI 与 DMG 回读不代表管理员安装、XPC inactive、真实 Turbo、失败回滚或安全卸载已经验收。
+
+## Unreleased · ad hoc Turbo helper 安装身份 · 2026-08-31
+
+### Added
+
+- 新增协议 v8 的管理员安装路径。公开 ad hoc App 可显式打开 Terminal 安装器，把受限 helper、固定 `ProgramArguments` LaunchDaemon plist 和安装身份写入标准 root 路径。
+- 新增 root-owned manifest，记录固定 App/helper identifier、安装路径、20 字节 CodeDirectory hash 和可执行文件 SHA-256。App 与 helper 分别校验自身身份后，要求 peer 满足固定 identifier 与精确 CDHash。
+- 保留 Developer Team 构建的同 Team `SMAppService` 路径；没有 Team ID 时才选择管理员安装路径。
+
+### Changed
+
+- 私有 XPC 协议从 v7 提升到 v8，旧 helper 不会被新 App 当成兼容实现。
+- GitHub Actions 发布构建改用 hardened runtime ad hoc 签名，并新增安装器语法、手动 plist、双方 identifier 与 CDHash requirement 校验。未来 Release 说明会明确未公证、管理员安装和每次更新重新固定哈希的限制。
+
+### Validated
+
+- macOS 26 arm64 无签名 Debug 构建通过，普通测试在沙箱外通过。
+- `Install Turbo Helper.command` 通过 `bash -n`，手动 LaunchDaemon plist 通过 `plutil -lint`，App 构建资源读回安装器为可执行文件。
+- 临时 App/helper 使用 hardened runtime ad hoc 重签后通过 deep strict 校验；双方实际 CDHash 均为 40 位，固定 identifier 与精确 CDHash requirement 的双向 `codesign --verify -R` 验证通过。
+
+### Not included
+
+- 本轮没有运行 sudo 安装器，没有写入 `/Library`、登记或替换 launchd 服务、连接 root helper、启动 Turbo、写 SMC、提交、push 或发布新版本。
+- 管理员安装、失败回滚、XPC inactive、真实 Turbo 与安全卸载仍需分别验收；已发布 v0.1.0 不会因此获得 Turbo。
+
 ## v0.1.0 · 正式 App 图标 · 2026-08-31
 
 ### Added

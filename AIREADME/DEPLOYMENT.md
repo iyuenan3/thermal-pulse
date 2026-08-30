@@ -8,7 +8,7 @@
 
 ## 怎么起
 
-当前支持关闭代码签名的本地测试构建、Personal Team 本机签名构建，以及 GitHub Actions DMG 预览包。带正式 AppIcon 的 v0.1.0 已通过 GitHub Actions 发布，版本为 `0.1.0 (2)`；公开资产重新下载后的 SHA-256、DMG CRC、只读挂载、deep strict 完整性、图标、版本和 arm64 架构均已通过独立回读。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仅保留该 v6 root helper，本机 App 已退出，租约目录为空。代码审查后的 v7 只完成源码、测试和签名构建与只读恢复门禁，没有升级系统 helper 或执行新的 Turbo。公开 DMG 不替代 Personal Team 本机验收，也不代表 Developer ID、公证或其他机型 Turbo 已通过。
+当前支持关闭代码签名的本地测试构建、Personal Team 本机签名构建，以及 GitHub Actions DMG 预览包。带正式 AppIcon 的 v0.1.0 已通过 GitHub Actions 发布，版本为 `0.1.0 (2)`；公开资产重新下载后的 SHA-256、DMG CRC、只读挂载、deep strict 完整性、图标、版本和 arm64 架构均已通过独立回读。v0.1.1 将协议 v8 管理员安装与双向 CDHash 固定路径作为预发布安装测试候选交给用户自行安装，版本为 `0.1.1 (3)`。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仅保留该 v6 root helper，本机 App 已退出，租约目录为空。代码审查后的 v7 只完成源码、测试和签名构建与只读恢复门禁。本轮不会运行 v8 安装器、升级系统 helper、连接 XPC 或执行 Turbo。公开 DMG 不替代 Personal Team 本机验收，也不代表 Developer ID、公证、root 安装或其他机型 Turbo 已通过。
 
 第二台 M5 验收机只从一次性 `/private/tmp` 工作目录构建和启动无签名 Debug App，没有复制到 Applications、注册登录项或安装 helper。该 App 已创建菜单栏状态项并完成首次只读扫描；无签名构建按设计不能连接 privileged helper。2026-08-31 已按用户要求发送正常退出信号，并复查确认没有残留 ThermalPulse 进程。临时运行不等于安装或分发验收。
 
@@ -16,11 +16,11 @@
 
 - 推送与工程 `MARKETING_VERSION` 一致的 `vX.Y.Z` tag 时，`.github/workflows/release.yml` 在 GitHub 官方 `macos-26` Apple Silicon runner 上运行。当前 runner 为 arm64，并以 Xcode 26.6 为默认版本。
 - 工作流先执行普通测试，再构建 macOS 26 arm64 Release App。真实 AppleSMC 硬件测试不会在云端隐式运行。
-- App 和内嵌 helper 使用 ad hoc 签名完成 bundle 完整性校验，然后打包为 `ThermalPulse-vX.Y.Z-macos-arm64.dmg`。工作流会校验 App 版本、deep strict 签名、DMG CRC、只读挂载结果、arm64 App 存在性，并生成 SHA-256 文件。
-- GitHub Release 标记为 prerelease。公开 runner 没有 Developer ID 证书和私钥，产物未经公证，也没有可信 Team ID；普通监控可用，Turbo 必须按现有签名门禁保持不可用。禁止为让公开包启用 Turbo 而放宽 XPC 双向签名要求。
+- App 和内嵌 helper 使用带 hardened runtime 的 ad hoc 签名完成 bundle 完整性校验，然后打包为 `ThermalPulse-vX.Y.Z-macos-arm64.dmg`。工作流会校验 App 版本、安装器 shell 语法、手动 LaunchDaemon plist、deep strict 签名、双方固定 identifier 与 CDHash requirement、DMG CRC、只读挂载结果、arm64 App 存在性，并生成 SHA-256 文件。
+- GitHub Release 标记为 prerelease。公开 runner 没有 Developer ID 证书和私钥，产物未经公证，也没有可信 Team ID；协议 v8 以后只有用户把 App 放入 `/Applications` 并显式运行管理员安装器后，Turbo 才可能连接 helper。安装器把当前 App/helper CDHash 固定到 root-owned manifest，不能退化为仅 bundle identifier、可变路径或任意调用方。v0.1.1 是用户自行安装测试的候选版本，不把 CI 发布成功解释为 root 安装或 Turbo 验收。
 - v0.0.1 的 GitHub Actions run `33323101547` 已成功完成。Release API 读回非 draft prerelease 和两个 uploaded 资产；重新下载后，DMG 的 SHA-256、CRC、挂载内容、deep strict 完整性、版本与 arm64 架构均通过独立复验。
 - v0.1.0 的 GitHub Actions run `33324533793` 已成功完成，tag 指向提交 `cf85878`。Release API 读回非 draft prerelease；官方 DMG 为 4,195,525 字节，SHA-256 为 `f5f4487904e2660fddf37568b0aa97ffd28b8290759a2a5b63ca97129af2afff`。重新下载后，校验文件、DMG CRC、只读挂载、Applications 快捷入口、`AppIcon.icns`、版本 `0.1.0 (2)`、deep strict 完整性与 arm64 架构均通过独立复验。
-- 发布保留策略不保留旧版本二进制资产。v0.1.0 完成验证后，v0.0.1 的 DMG 与 `.sha256` 已按精确资产名删除，API 回读资产列表为空；v0.0.1 Release 页面与 tag 继续保留。
+- 发布保留策略不保留旧版本二进制资产。工作流只删除其他 Release 中匹配 `ThermalPulse-vX.Y.Z-macos-arm64.dmg` 与对应 `.sha256` 的资产，Release 页面与 tag 继续保留。v0.1.0 完成验证后，v0.0.1 的两个旧资产已按该策略删除并回读为空。
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ThermalPulse.xcodeproj -scheme ThermalPulse -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
@@ -55,12 +55,12 @@ N/A。项目是本地菜单栏 App，不提供服务器、域名、远程访问�
 ## helper 注册与运行
 
 - 已验证的 bundle 布局为 `Contents/Resources/ThermalPulseHelper` 与 `Contents/Library/LaunchDaemons/io.github.iyuenan3.thermalpulse.helper.plist`。plist 的 `BundleProgram` 指向前者，`Label` 与唯一 Mach service 均为 helper identifier。
-- helper 随签名 App Bundle 分发，使用 `SMAppService.daemon(plistName:)` 查询和注册 LaunchDaemon。当前实现把 `notRegistered` 与系统尚未记录服务时的 `notFound` 都映射为可注册状态；待批准时提供系统设置入口，只有 `enabled` 才连接 XPC。旧 helper 返回 write-path-unavailable 或协议不兼容时，App 只在用户再次确认后失效旧 XPC，等待异步 `unregister()` 完成，并连续观察未注册状态稳定后注册一次当前签名版本。
+- helper 随 App Bundle 分发。具备 Team ID 的构建使用 `SMAppService.daemon(plistName:)` 查询和注册 LaunchDaemon；当前实现把 `notRegistered` 与系统尚未记录服务时的 `notFound` 都映射为可注册状态，待批准时提供系统设置入口。没有 Team ID 的 ad hoc 构建改为只读检查 `/Library/Application Support/ThermalPulse/installation.plist`，用户确认后打开 App 资源中的 `Install Turbo Helper.command`。安装器要求 App 位于 `/Applications`，通过 sudo 把 helper 安装到 `/Library/PrivilegedHelperTools/io.github.iyuenan3.thermalpulse.helper`，把使用固定 `ProgramArguments` 的 plist 安装到 `/Library/LaunchDaemons`，写入 root-owned 安装身份，再由 launchd bootstrap。任一路径只有状态为 enabled 才连接 XPC。
 - 普通监控不依赖 helper。只有用户首次使用 Turbo 时才引导注册和批准。
 - helper 以 root 权限运行，但接口仅覆盖固定 Turbo 租约，不承担采样、图表或网络职责。
 - 持久租约路径固定为 `/Library/Application Support/ThermalPulse/turbo-lease.plist`。目录权限为 0755，租约文件权限为 0600；内容不含设备标识、RPM、凭证或用户数据。只有全部自动模式读回确认后才删除。
-- App 与 helper 使用同一实际签名的 Team ID。App 要求 helper 满足 Apple 签名锚点、固定 helper identifier 与相同 Team ID；helper 对 App 执行对称校验。未签名构建无法取得可信 Team ID，因此拒绝 XPC 连接。
-- helper executable 嵌入由 Xcode 生成的 Info.plist section，以保证裸 Mach-O 的代码签名 identifier 与 `PRODUCT_BUNDLE_IDENTIFIER` 一致。ad hoc 构建已完成 identifier 读回和 App deep strict 校验，但因没有 Team ID 只能证明 identity 布线正确，不能证明双向签名连接通过。
+- Developer Team 路径中，App 与 helper 使用同一实际 Team ID。App 要求 helper 满足 Apple 签名锚点、固定 helper identifier 与相同 Team ID，helper 对 App 执行对称校验。ad hoc 路径中，安装器记录两者各自的 20 字节代码目录哈希和可审计的可执行文件 SHA-256；App 与 helper 启动时分别严格校验自身签名、固定 identifier、固定路径和 root-owned manifest，再对 peer 设置精确 CDHash requirement。知道 bundle identifier 或读取公开 manifest 都不能生成相同可执行代码哈希。
+- helper executable 嵌入由 Xcode 生成的 Info.plist section，以保证裸 Mach-O 的代码签名 identifier 与 `PRODUCT_BUNDLE_IDENTIFIER` 一致。协议 v8 临时 ad hoc App/helper 已完成 hardened runtime 签名、deep strict 校验，以及双方固定 identifier 与精确 CDHash requirement 的实际验证；这仍不等于 root 安装、XPC 实连或 Turbo 验收。
 - 用户自用阶段已在 Xcode 中登录 Apple Account，并为 App 与 helper 配置同一个免费 Personal Team。Personal Team 的 App ID 与配置描述文件存在短期有效期限制，不作为发布方案；Developer ID 分发与公证需要付费 Apple Developer Program，当前不进入范围。
 - 2026-08-29 较早的本机 Debug 签名基线实际读回 App 与 helper 的固定 identifier 和相同非空 Team ID，并由完整 Apple Development 证书链通过 App bundle 的 deep strict 验证。随后用户显式完成注册和系统允许，系统读回 LaunchDaemon 由 ServiceManagement 管理、root 运行且 XPC 活跃；App 收到旧安全 stub 的 write-path-unavailable，证明注册与双向签名 XPC 实连。
 - Xcode 26.6 本机 SDK 明确要求包含 LaunchDaemon 的 App 完成公证。Personal Team 构建不作为发布方案，`spctl` 与 notarized 签名 requirement 仍未通过。
@@ -78,10 +78,10 @@ N/A。项目是本地菜单栏 App，不提供服务器、域名、远程访问�
 
 - 首版不自动持久化传感器历史，因此没有用户数据备份要求。
 - 升级前若存在 ThermalPulse 租约，必须先独立确认硬件处于 Apple 管理模式。修复恢复逻辑的 helper 升级可以用于清理已确认安全但卡住的旧 lease，升级动作本身不得启动 Turbo。无租约 `Ftst=1` 不能假定属于 ThermalPulse，也不能依赖 helper 升级自动清除，必须以本次日志证据和用户独立授权执行窄范围恢复。
-- 更新已注册 helper 时必须先失效旧 XPC，等待 `SMAppService` 异步注销完成，并连续观察状态稳定为未注册后再注册一次当前签名版本。失败后回到只读状态，不自动重试；禁止用手工 `launchctl` 或直接覆盖系统文件绕过 ServiceManagement。
+- Developer Team 路径更新已注册 helper 时必须先失效旧 XPC，等待 `SMAppService` 异步注销完成，并连续观察状态稳定为未注册后再注册一次当前签名版本。失败后回到只读状态，不自动重试。ad hoc 路径由管理员安装器处理固定系统路径；它必须先拒绝任何现存 Turbo 租约，识别并拒绝没有手动安装 manifest 的旧 ServiceManagement job，备份既有手动安装文件，只在所有新文件和身份数据完成校验后 bootout 旧 job，并在 bootstrap 失败时恢复旧 helper、plist、manifest 与服务。App 更新改变 CDHash 后必须重新运行安装器。
 - 卸载顺序必须是停止 Turbo、恢复自动、注销 helper、确认服务停止，最后移除 App。
-- helper 更新失败时回滚到已签名的兼容版本；无法确认兼容时禁用 Turbo，但保留只读监控。
-- 具体安装、升级、卸载和回滚命令必须在真实签名构建验证后补充，禁止把未经验证的 sudo 命令写成操作手册。
+- helper 更新失败时回滚到先前通过身份校验的兼容版本；无法确认兼容时禁用 Turbo，但保留只读监控。
+- 当前 `.command` 安装器已完成静态 shell 语法、plist、构建资源和临时 ad hoc requirement 验证，尚未实际执行 sudo、写入 `/Library` 或验证回滚。它在完成一次用户授权的无租约安装、launchd/XPC 读回和卸载方案前，不能宣称为已验收安装手册。
 
 ## 运维约束
 

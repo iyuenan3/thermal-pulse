@@ -13,8 +13,8 @@
 7. SwiftUI 菜单栏界面：当前工作树只保留 `MenuBarExtra`，不再创建独立 `Window` scene。状态栏标签出现时立即启动普通权限只读采样，不要求用户先展开面板；面板的 `onAppear` 继续调用同一个幂等入口。状态栏标签不再直接提交 SwiftUI 文本，而由主线程 AppKit 渲染器把动态值画成固定 23 pt 高、10 pt 等宽字形的模板 `NSImage`。左列预留 `P100°` 宽度并固定上下显示 P/E 核热点；右列预留四位 RPM 宽度，动态风扇为 0 或 1 台时显示一个垂直居中的占位或转速，为 2 台及以上时在 0 与 11.5 pt 坐标显示前两台转速。状态项省略风扇标签和 RPM 单位，电池温度、完整语义及所有动态风扇保留在辅助功能描述与展开面板；更多风扇不继续扩张状态项宽度。复合 SwiftUI 标签会只保留第一个文本，单个多行 `Text` 又会被状态项按系统字号重排和裁切，所以两者都不能继续使用。弹出面板不使用 `ScrollView` 或固定高度，通过紧凑间距完整展示 P 核热点、E 核热点、电池平均温度、一张固定 5 分钟温度曲线、系统 thermal state、逐风扇 RPM 与 Turbo。逐风扇控制文案直接映射可信 `TurboStatus`，active 显示 Turbo 全速控制，状态不可信时不宣称苹果自动。曲线最多包含三类中实际可用的代表序列，不提供范围切换、原始 key 选择或高级窗口。正式 App 图标位于 `ThermalPulse/Resources/Assets.xcassets/AppIcon.appiconset`，覆盖 macOS 16 至 1024 px 的 1x 与 2x 槽位，构建产物必须生成 `AppIcon.icns` 并在 Info.plist 读回 `CFBundleIconName=AppIcon`。
 8. 本地性能标记：持续采样每满 60 个有效样本记录一次有限状态快照，手动重新枚举也记录事件。旧监控窗口相关事件仍保留在未使用代码中，不属于当前产品入口。
 9. `TurboCoordinator`：已实现 App 侧纯逻辑边界。只接受无参数启动、停止和状态查询，拒绝重复启动，校验 active 响应必须同时包含开始时间与未来截止时间，且租约长度不超过 600 秒；停止只有在返回无错误 inactive 时才显示苹果自动。菜单栏 `TurboControlView` 用 `TimelineView` 展示倒计时和中途停止入口，不承担安全计时。
-10. `TurboXPCClient`：已实现固定 Mach service 的私有持久 transport。连接只调用 `startTurbo(reply:)`、`stopTurbo(reply:)` 或 `getTurboStatus(reply:)`，响应使用 `NSSecureCoding` payload 并检查协议版本。客户端只在自身代码签名严格有效且能取得 Team ID 时连接，同时要求 helper 满足 Apple 签名锚点、固定 helper identifier 和相同 Team ID；未签名构建直接返回 helper unavailable。同一持久连接可隔离跟踪多个并发请求，状态轮询不会占用停止请求的唯一槽位；单个请求完成只解除自身 continuation，连接失效时才统一失败剩余请求。连接在 App 生命周期内保持，进程退出、断连、失效、远端错误或请求超时都会使连接失效，helper 据此恢复其租约。启动、停止、状态查询的超时分别为 70 秒、12 秒和 3 秒；取消后的状态轮询结果不能覆盖主动停止结果。
-11. `TurboHelperRegistrationCoordinator` + `SMAppServiceTurboHelperRegistrationClient`：已实现 LaunchDaemon 状态查询、显式注册与显式升级边界。App 启动和控件出现时只读查询状态，不自动注册；`notRegistered` 与首次查询常见的 `notFound` 都显示注册入口，只有用户确认后才调用 `register()`。旧 helper 返回 write-path-unavailable 或协议不兼容时，独立升级确认会先失效旧 XPC，等待异步注销完成，再以 100 毫秒间隔连续观察 10 次 `notRegistered` 或 `notFound`，最多等待 8 秒。只有未注册状态稳定才执行一次当前签名版本注册，不做自动重试。待批准状态提供系统设置入口，只有 `enabled` 才继续查询 XPC 状态。
+10. `TurboXPCClient`：已实现固定 Mach service 的私有持久 transport。连接只调用 `startTurbo(reply:)`、`stopTurbo(reply:)` 或 `getTurboStatus(reply:)`，响应使用 `NSSecureCoding` payload 并检查协议版本。具备有效 Team ID 时，客户端继续要求 helper 满足 Apple 签名锚点、固定 helper identifier 和相同 Team ID；没有 Team ID 的 ad hoc 构建必须从 root-owned 安装身份文件读出固定 helper CDHash，并同时确认当前 App identifier、代码目录哈希和 `/Applications/ThermalPulse.app` 路径完全匹配。缺失或不安全的 manifest、移动后的 App、哈希变化和无效签名都返回 helper unavailable，不允许退化为仅 bundle identifier 校验。同一持久连接可隔离跟踪多个并发请求，状态轮询不会占用停止请求的唯一槽位；单个请求完成只解除自身 continuation，连接失效时才统一失败剩余请求。连接在 App 生命周期内保持，进程退出、断连、失效、远端错误或请求超时都会使连接失效，helper 据此恢复其租约。启动、停止、状态查询的超时分别为 70 秒、12 秒和 3 秒；取消后的状态轮询结果不能覆盖主动停止结果。
+11. `TurboHelperRegistrationCoordinator` + 自适应注册客户端：具备 Team ID 时继续使用 `SMAppServiceTurboHelperRegistrationClient`，执行 LaunchDaemon 状态查询、显式注册与显式升级；公开 ad hoc 构建使用 `ManualTurboHelperInstallationClient`，只在用户确认后打开 App 内的 Terminal 安装器。安装器要求 App 位于 `/Applications`，以 sudo 验证 App/helper strict 完整性、固定 identifier 和 CDHash，安装 root-owned helper、LaunchDaemon plist 与 0644 manifest，再用 launchd 登记服务；安装不调用任何 XPC Turbo 方法。App 启动和控件出现时只读查询对应状态，不自动注册或安装。手动安装后的每次 App 更新都会因 App CDHash 变化重新要求管理员安装。
 
 监控数据流：
 
@@ -22,7 +22,7 @@
 
 ### privileged helper
 
-1. `CallerValidator`：已实现。helper 启动时先严格验证自身签名并取得 Team ID，再由 `NSXPCListener.setConnectionCodeSigningRequirement` 在 delegate 前拒绝不满足 Apple 签名锚点、固定 App identifier 和相同 Team ID 的连接。协议 payload 另带固定版本并拒绝不兼容响应。
+1. `CallerValidator`：已实现双路径。helper 启动时先严格验证自身代码签名。具备 Team ID 时，由 `NSXPCListener.setConnectionCodeSigningRequirement` 在 delegate 前拒绝不满足 Apple 签名锚点、固定 App identifier 和相同 Team ID 的连接；ad hoc helper 必须同时确认自己位于固定系统路径、自己的 identifier 与 CDHash 匹配 root-owned manifest，再要求调用方满足固定 App identifier 与 manifest 中的精确 App CDHash。任一路径无法构造 requirement 都直接退出。协议 payload 另带固定版本并拒绝不兼容响应。
 2. `TurboHelperService`：已实现每条 XPC 连接独立的 owner ID。服务只暴露三个无业务参数方法；持有租约的连接中断或失效时通知安全控制器恢复，状态查询不会接管所有权。
 3. `TurboLeaseFileStore`：已实现 root-owned 最小持久租约。首次写 SMC 前先保存开始时间、绝对截止时间和空接管列表；每个风扇在切手动前先把其动态索引与模式 key 写入租约，`Ftst` 解锁也先记录所有权。租约不保存设备标识、RPM 或用户数据，只有全部恢复读回确认后才删除。
 4. `SMCFanWriteAdapter`：已实现并只编入 helper target。它动态读取 `FNum`，验证每个 `F{i}Ac`、`F{i}Mx`、`F{i}Tg` 与 `F{i}Md` 或 `F{i}md` 的实时类型。Apple Silicon 模式 0 和 3 都视为 Apple 管理，模式 1 视为手动，其他值拒绝。目标写入直接复制本轮实时最大值的原始字节，不接受调用方 key、RPM 或时长。当前机器需要时可通过 `Ftst` 处理系统 thermal manager 占用，但必须先持久记录、写后读回，并在恢复时清除和读回。
@@ -30,7 +30,7 @@
 
 Turbo 注册与数据流：
 
-`显式注册确认 → SMAppService → 系统批准 → 单击 Turbo 按钮 → TurboCoordinator → 签名校验 XPC → TurboLeaseStore → FanWriteAdapter → AppleSMC → 稳定读回模式和 RPM → UI`
+`显式注册或管理员安装确认 → SMAppService 或 root-owned hash manifest → 单击 Turbo 按钮 → TurboCoordinator → 双向身份校验 XPC → TurboLeaseStore → FanWriteAdapter → AppleSMC → 稳定读回模式和 RPM → UI`
 
 ## Turbo 安全状态机
 
@@ -98,6 +98,7 @@ helper 启动或重启时先检查自己的持久租约：存在旧租约则恢�
 - 用户随后完成 v5 helper 升级并确认验收通过。源码再把启动时 `Ftst=1` 的固定 3 秒等待改为每 100 毫秒读回、连续两次稳定为 1 就继续、3 秒作为失败上限，并把私有 XPC 协议升级为 v6。用户显式升级 v6 helper 后执行短测，日志显示 `Ftst` 在约 0.98 秒后稳定接管，约 8.78 秒后读回两台风扇实际 RPM 上升，主动停止后记录 `restoration_completed issue=none` 且租约目录为空。
 - 对 v6 基线的代码审查发现四项问题：恢复失败后看门狗会等到截止时间才重试，未知 `Ftst` 仍可能进入解锁写入，App 每秒状态轮询可能与停止请求争用单一 XPC 请求槽，多风扇摘要可能继续扩张。提交 `934721e` 已修复并将协议提升到 v7。完整普通测试共 78 项，74 项通过、4 项硬件测试按设计跳过、0 项失败；独立只读恢复门禁 1 项通过，确认当前风扇为 Apple 管理且 `Ftst=0`；Personal Team v7 App 与内嵌 helper 均通过 strict 签名校验。当前已注册 helper 和运行 App 仍为 v6，本轮没有升级 v7 helper、启动 Turbo 或写 SMC。
 - 第二台 Mac17,2、Apple M5 MacBook Pro 的普通权限探针读回 2778 个 key、1 台风扇、`F0Ac`、`F0Mx`、`F0Tg` 与小写 `F0md`，其中动态最大值为 6550 RPM；温度目录包含 14 个有效 `Tp` 候选、4 个有效 `Te` 候选和两枚电池温度。单风扇布局策略把右列转速垂直居中，双风扇继续上下排列，更多风扇只在面板和辅助功能描述完整保留。M4 Pro 与 M5 的完整普通测试均为 76 项通过、4 项硬件测试按设计跳过；M5 单风扇探针和 12 秒动态温度族刻画分别通过。M5 探测时风扇已经处于外部 manual mode 1，未尝试 Turbo。
+- 2026-08-31，协议 v8 加入公开 ad hoc 安装身份路径。普通测试在沙箱外通过；临时 ad hoc App 与 helper 使用 hardened runtime 重新签名后，双方实际 CDHash 均为 40 位，`codesign` 对固定 identifier 与精确 CDHash requirement 的双向验证通过。安装脚本通过 `bash -n`，手动 LaunchDaemon plist 通过 `plutil -lint`，无签名 Debug 构建通过。本轮没有运行 sudo 安装器、修改 `/Library`、登记 launchd 服务、连接 root helper、启动 Turbo 或写 SMC。
 
 ## 禁改项 / Forbidden Refactors
 

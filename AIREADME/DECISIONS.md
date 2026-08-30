@@ -308,3 +308,20 @@
 - Decision: `vX.Y.Z` tag 触发 GitHub Actions，tag 必须与 `MARKETING_VERSION` 一致。工作流运行普通测试、构建 Release、ad hoc 签名 App 与 helper、生成并挂载验证压缩 DMG、生成 SHA-256，再创建 prerelease。v0.0.1 公开 DMG 明确只支持普通权限只读监控，Turbo 保持不可用。
 - Alternatives（否决）: 把 Personal Team 私钥导出到仓库；撤销或复用其他项目证书；在无 Team ID 时只按 bundle identifier 信任 App；手工上传未经 CI 验证的 DMG；把源码 ZIP 当作桌面发布产物。
 - Tradeoff: 用户可以从 GitHub 获得可重复构建的 DMG，但首次启动仍需接受未公证提示，公开包暂时不能使用 Turbo。正式分发需要未来加入 Developer ID 签名与 Apple 公证，不影响本机 Personal Team 的独立 Turbo 验收。
+
+## ADR-037 · ad hoc 分发使用管理员固定 CDHash 的 helper 身份 · 2026-08-31
+
+- Problem: 用户希望把 ThermalPulse 给朋友使用，但不准备购买 Apple Developer Program。已发布 ad hoc DMG 没有可信 Team ID，原同 Team XPC requirement 会正确禁用 Turbo；若直接接受任意无签名 App 或只检查 bundle identifier，任何本地进程都能仿冒调用 root helper。
+- Constraint: 普通监控继续不需要 root；Turbo 的三个无业务参数方法、固定 600 秒租约、动态最大值、外部控制冲突拒绝和全部恢复不变量不能改变。安装必须由用户显式触发并输入管理员密码，不能自动提权；没有 Apple 公证和发布者身份的事实必须明确展示。现有 Personal Team 与未来 Developer ID 路径不能被破坏。
+- Evidence: macOS ad hoc 签名仍提供稳定 CodeDirectory 与 20 字节 CDHash，`NSXPCConnection` 和 `NSXPCListener` 的 code-signing requirement 支持 `identifier` 与精确 `cdhash` 组合。协议 v8 临时 App/helper 使用 hardened runtime ad hoc 重签后，双方 CDHash 均为 40 位十六进制，`codesign --verify -R` 对两个固定 identifier 和精确哈希的双向验证通过。普通测试和无签名构建通过，安装器通过 `bash -n`，手动 plist 通过 `plutil -lint`。本轮没有执行系统安装或 XPC 实连。
+- Decision: 保留双路径。存在有效 Team ID 时继续使用 Apple 签名锚点、固定 identifier、同 Team requirement 与 `SMAppService`。没有 Team ID 时，App 只打开用户确认的 Terminal 安装器；安装器要求 `/Applications/ThermalPulse.app`，验证 App/helper strict 完整性、固定 identifier、CDHash 和 SHA-256，把 helper 与固定 `ProgramArguments` plist 安装到标准 root 路径，并把双方身份写入 root-owned、不可由普通用户修改的 manifest。运行时 App 和 helper 都先验证自身 identifier、CDHash、固定路径和 manifest，再给 peer 设置固定 identifier 与精确 CDHash requirement。协议提升到 v8，旧 helper 不自动兼容。
+- Alternatives（否决）: 接受任意 ad hoc 或完全无签名调用方；只检查 bundle identifier、路径或可读 manifest；在 App 中保存共享 secret；暴露通用 root SMC 写接口；让用户关闭 SIP 或 Gatekeeper；复用、导出或撤销其他项目证书；把免费 Personal Team 当成朋友分发方案。
+- Tradeoff: 朋友不需要付费开发者账号，也不需要关闭系统安全机制，但首次安装和每次 App 二进制更新都要重新输入管理员密码并刷新固定哈希。公开包仍未公证，macOS 会显示来源警告；root 安装器扩大了发布与回滚责任，因此在一次真实无租约安装、XPC inactive 读回和卸载验收前，不发布带 Turbo 的新版本，也不宣称该路径可用。
+
+## ADR-038 · v0.1.1 作为管理员安装的预发布测试候选 · 2026-08-31
+
+- Problem: ADR-037 原计划先完成本机 root 安装、XPC inactive 和卸载验收再发布，但用户希望先取得 GitHub DMG，自行执行首次安装测试。
+- Constraint: 发布授权不包含本机安装、sudo、helper 登记、Turbo 启动或 SMC 写入。CI 也不能替代系统级读回，未经公证的 ad hoc 包必须继续显示风险和预发布状态。
+- Decision: 发布 v0.1.1 prerelease，交付协议 v8 管理员安装路径作为明确的测试候选。发布门禁只确认源码测试、Release 构建、hardened runtime ad hoc 签名、安装器与 plist 静态检查、精确 CDHash requirement，以及 DMG 挂载与版本架构。用户安装后再单独验收 root ownership、manifest、launchd、XPC inactive、卸载和真实 Turbo。
+- Alternatives（否决）: 把 v0.1.1 继续限制为只读监控；在发布前由 Codex 代替用户执行 sudo 安装；把 CI 通过写成 Turbo 已可用；取消双向 CDHash 门禁以减少安装步骤。
+- Tradeoff: 用户可以立即获得可重复下载的测试包，但成为协议 v8 安装路径的首位系统验收者。任何安装身份、连接或硬件状态异常都必须保持 Turbo 不可用，发布成功本身不提升硬件支持等级。

@@ -7,8 +7,8 @@ v0.1 不提供网络端点、URL scheme、CLI 或第三方插件接口。产品�
 ## 鉴权
 
 - 只读监控：无鉴权、无管理员权限，直接在当前用户进程读取允许访问的系统信息。
-- Turbo：首次使用时按 macOS 标准流程注册并批准 privileged helper。
-- XPC：App bundle identifier 固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 和 Mach service 固定为 `io.github.iyuenan3.thermalpulse.helper`。双方都先严格验证自身签名，再动态取得自身 Team ID，并要求 peer 满足 `anchor apple generic`、固定 identifier 和相同 Team ID。未签名或签名无效时拒绝连接，不提供仅按 identifier 校验的回退。本文不记录 Team ID、私钥或证书材料。
+- Turbo：首次使用时显式配置 privileged helper。具备 Developer Team 的构建使用 `SMAppService` 注册和系统批准；公开 ad hoc 构建使用管理员安装器安装固定路径 helper 与 root-owned 身份文件。
+- XPC：App bundle identifier 固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 和 Mach service 固定为 `io.github.iyuenan3.thermalpulse.helper`。双方都先严格验证自身代码签名。能取得 Team ID 时，要求 peer 满足 `anchor apple generic`、固定 identifier 和相同 Team ID；没有 Team ID 时，必须从 `/Library/Application Support/ThermalPulse/installation.plist` 读取由管理员固定的 peer CDHash，并确认自身 identifier、CDHash 与固定安装路径相符。manifest 及其目录必须属于 root 且不能被 group 或 other 写入。签名无效、manifest 缺失或不安全、路径移动、哈希变化时拒绝连接，不提供仅按 identifier 校验的回退。本文不记录 Team ID、私钥或证书材料。
 
 ## 产品能力契约
 
@@ -36,17 +36,18 @@ v0.1 不提供网络端点、URL scheme、CLI 或第三方插件接口。产品�
 - `TurboStatus` 包含 inactive、activating、active、restoring、failed-safe-auto、开始时间、绝对截止时间和有限错误类别。
 - App 只接受带开始时间与未来截止时间、且两者相差不超过 600 秒的 active 响应。重复启动不再次调用 client，也不延长截止时间。
 - stop 只有返回无错误 inactive 时才显示苹果自动。通信、写入或恢复状态不可信时显示 failed-safe-auto，不宣布恢复成功。
-- 当前 `TurboXPCClient` 已接入固定 Mach service，并为 helper 设置代码签名 requirement。未签名构建返回 helper unavailable；只有系统注册状态为 enabled 时才查询 XPC。同一持久连接允许状态查询与停止请求并发存在，各请求独立完成；连接失效时才统一失败剩余请求。协议 v6 已完成快速 `Ftst` 接管、短时 active 和主动停止实机读回；当前协议 v7 强制已注册 v6 helper 显式升级，确保实际运行的 helper 包含恢复失败立即重试和未知 `Ftst` 拒绝写入。控件、源码、签名和写入通路可达仍不等于全部恢复场景已经验收。
+- 当前 `TurboXPCClient` 已接入固定 Mach service，并为 helper 设置代码签名 requirement。Developer Team 构建使用同 Team requirement；ad hoc 构建只有在管理员安装身份与当前 App 完全匹配时才构造固定 helper CDHash requirement。只有注册或安装状态为 enabled 时才查询 XPC。同一持久连接允许状态查询与停止请求并发存在，各请求独立完成；连接失效时才统一失败剩余请求。协议 v6 已完成快速 `Ftst` 接管、短时 active 和主动停止实机读回；协议 v7 加入恢复失败立即重试和未知 `Ftst` 拒绝写入；当前协议 v8 强制旧 helper 显式升级或重新安装，并加入 ad hoc 双向固定哈希语义。控件、源码、签名和写入通路可达仍不等于全部恢复场景已经验收。
 
 ## helper 注册状态契约
 
-- App 启动和 Turbo 控件出现时只调用 `SMAppService.status`，不得自动注册 LaunchDaemon。
+- App 根据当前自身签名选择单一配置路径。具备 Team ID 时查询 `SMAppService.status`；没有 Team ID 时只读检查 root-owned manifest、当前 App 路径、identifier 和 CDHash。不得自动注册或安装 LaunchDaemon。
 - `notRegistered` 与首次查询可能返回的 `notFound` 都表示可以展示注册入口。`notFound` 不得直接解释为 App 包内缺少 plist。
 - 用户必须先点击“注册 Turbo helper”，再在确认弹窗中明确确认，App 才调用无参数 `SMAppService.register()`。注册动作本身不启动 Turbo，也不写 SMC。
+- ad hoc 构建显示“打开管理员安装器”。用户确认后 App 只用 `NSWorkspace` 打开内嵌 `.command` 文件；Terminal 中的 sudo 授权与脚本结果是独立步骤。安装器只接受 `/Applications/ThermalPulse.app`，验证 App/helper strict 完整性、固定 identifier、20 字节代码目录哈希和 SHA-256，再安装 root-owned helper、LaunchDaemon plist 与 0644 manifest。检测到租约、旧 ServiceManagement job、无身份文件的遗留系统文件或校验失败时拒绝覆盖。
 - `requiresApproval` 时只提供打开系统设置和重新检查状态；`enabled` 时才允许继续查询 XPC 状态；签名无效或注册失败时显示有限错误，不绕过 macOS 校验。
-- 不提供自动注册、自动升级或静默批准接口。旧 helper 返回 write-path-unavailable 或协议不兼容时，用户可经过独立确认执行升级；App 先失效旧 XPC，等待 `SMAppService` 异步注销完成，再以 100 毫秒间隔连续观察 10 次 `notRegistered` 或 `notFound`，最多等待 8 秒。只有状态稳定才调用一次无参数 `register()`，失败后不自动重试。升级成功也不调用 `startTurbo()`。
+- 不提供自动注册、自动安装、自动升级或静默批准接口。Developer Team 路径的旧 helper 返回 write-path-unavailable 或协议不兼容时，用户可经过独立确认执行升级；App 先失效旧 XPC，等待 `SMAppService` 异步注销完成，再以 100 毫秒间隔连续观察 10 次 `notRegistered` 或 `notFound`，最多等待 8 秒。只有状态稳定才调用一次无参数 `register()`，失败后不自动重试。ad hoc 路径中 App 或 helper CDHash 变化时重新打开管理员安装器；安装器先拒绝任何现存租约，手动安装升级失败时恢复先前文件与 launchd 服务。任一路径成功都不调用 `startTurbo()`。
 
-## 私有 XPC 协议 v7
+## 私有 XPC 协议 v8
 
 允许的方法只有：
 
@@ -54,7 +55,7 @@ v0.1 不提供网络端点、URL scheme、CLI 或第三方插件接口。产品�
 - `stopTurbo(reply:)`：无业务参数。源码实现反向恢复租约中所有已接管风扇。mode 0 与 mode 3 都表示 Apple 管理，mode 1 才需要写 automatic；租约记录 ThermalPulse 接管过 `Ftst` 时始终写 0，等待稳定读回，并读回全部模式与实际 RPM；全部确认后才删除租约并返回无错误 inactive。
 - `getTurboStatus(reply:)`：无业务参数。返回 inactive、activating、active、restoring 或 failed-safe-auto，以及绝对开始时间、绝对截止时间和有限错误类别。App 可每秒调用它刷新倒计时，但这不是安全计时器。
 
-reply 使用单一 `NSSecureCoding` payload，字段只有 `protocolVersion`、`phaseRawValue`、`startedAt`、`deadline` 和 `issueRawValue`。协议版本固定为 7；未知版本、阶段或错误值被拒绝为不兼容或无效状态。版本 7 保留版本 6 的 `Ftst` 快速稳定读回，并强制系统 helper 升级到恢复失败立即重试和未知 `Ftst` 拒绝写入语义。客户端的启动、停止和状态查询超时分别为 70 秒、12 秒和 3 秒，任何超时都使连接失效，不返回伪 inactive；单个 reply 只完成对应请求，不能覆盖同连接上的其他未完成请求。
+reply 使用单一 `NSSecureCoding` payload，字段只有 `protocolVersion`、`phaseRawValue`、`startedAt`、`deadline` 和 `issueRawValue`。协议版本固定为 8；未知版本、阶段或错误值被拒绝为不兼容或无效状态。版本 8 保留版本 7 的全部安全控制语义，并强制 App/helper 共同使用 Developer Team 或管理员固定 CDHash 的同一鉴权模型。客户端的启动、停止和状态查询超时分别为 70 秒、12 秒和 3 秒，任何超时都使连接失效，不返回伪 inactive；单个 reply 只完成对应请求，不能覆盖同连接上的其他未完成请求。
 
 helper 持有绝对截止时间与进程内单调截止时间，300 毫秒 active 看门狗不依赖 App UI。它持续核对 `Ftst`、动态风扇集合、模式、实时最大目标和实际 RPM；实际 RPM 非有限、低于零或超过动态最大值 105% 时立即进入恢复。系统重写模式或目标时，只在 ThermalPulse 自己的有效租约内有界协调。到期、持有连接断开、`Ftst` 丢失、风扇集合变化、唤醒或无法重新确认状态都会进入恢复；helper 启动发现任何持久租约时直接恢复，不续跑旧租约。恢复失败时保留租约并进入 failed-safe-auto，下一次 300 毫秒看门狗 tick 立即重试，不等待原始截止时间。租约只记录开始时间、绝对截止时间、已触碰风扇索引与模式 key，以及 ThermalPulse 是否接管 `Ftst`。
 
@@ -72,7 +73,7 @@ helper 持有绝对截止时间与进程内单调截止时间，300 毫秒 activ
 ## 版本 / 兼容
 
 - pre-1.0 阶段不承诺私有 XPC ABI 稳定，但 App 与 helper 必须带同一协议版本并拒绝不兼容组合。
-- v0.0.1 公开 DMG 是 ad hoc 签名、未公证的只读监控预览版。由于没有可信 Team ID，App 必须报告 helper unavailable，不能注册或调用 Turbo；本机 Personal Team 构建仍是独立验收通道。
+- v0.1.0 及更早公开 DMG 是 ad hoc 签名、未公证的只读监控预览版，没有协议 v8 安装身份能力。v0.1.1 作为 ad hoc 预发布安装测试候选加入管理员固定 CDHash 路径，但发布门禁只覆盖构建、签名、安装器静态检查与 DMG 回读，不等于 root 安装、XPC 或真实 Turbo 已验收；本机 Personal Team 构建仍是独立验收通道。
 - 当前产品支持范围为 macOS 26 以上 Apple Silicon MacBook Pro。Mac16,7 已验证双风扇监控和短时 Turbo，Mac17,2 已验证单风扇只读监控；其他 Apple Silicon MacBook Pro 在实机证据进入支持矩阵前保持未验证，其他 Mac 产品线不在当前支持范围。
 - 机型支持按真实设备验证逐台增加，不采用“M1 到 M5 默认兼容”声明。
 - 破坏性产品行为变化需要更新 PRD、DECISIONS 和 CHANGELOG。

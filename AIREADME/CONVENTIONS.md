@@ -33,10 +33,10 @@
 - 逐风扇控制文案必须从可信 `TurboStatus` 映射。只有无错误 inactive 可以写“苹果自动控制”，active 必须写“Turbo 全速控制”，状态查询或恢复不可信时写“控制状态待确认”。
 - App 侧 `TurboCoordinator` 只接受无参数 client，不传 RPM、时长或 key；active 响应必须校验开始时间、未来截止时间和不超过 600 秒的租约长度，重复启动不得再次调用 client。
 - 私有 XPC identifier 只从 `ThermalPulseIdentity` 读取，不在 App、helper、plist 和测试中产生可漂移的第二份业务常量。LaunchDaemon plist 的固定值必须用构建产物读回验证。
-- XPC 双方必须在 activate 或 resume 前设置 peer code-signing requirement，约束 Apple 签名锚点、固定 identifier 与从自身有效签名取得的相同 Team ID。签名无效、Team ID 缺失或 requirement 无法构造时直接拒绝，不允许放宽为 ad hoc 或仅 bundle id 校验。
+- XPC 双方必须在 activate 前设置 peer code-signing requirement。具备 Team ID 时约束 Apple 签名锚点、固定 identifier 与从自身有效签名取得的相同 Team ID；没有 Team ID 时只允许管理员安装器生成的 root-owned manifest 路径，并同时约束固定 identifier 与精确 CDHash。ad hoc 路径还必须确认自身 strict 签名、固定安装路径、manifest 与父目录属于 root 且不可由 group 或 other 写入。任一条件失败直接拒绝，不允许仅按 bundle identifier 校验。
 - XPC payload 使用 `NSSecureCoding`、固定协议版本和有限枚举值。只允许三个无业务参数方法，不得借 reply block 之外的参数传入 RPM、时长或 SMC key。同一持久连接上的每个请求必须独立保存 continuation 和超时任务；单个 reply 只解除自身请求，只有连接失效才统一失败剩余请求。取消后的状态轮询不得覆盖主动停止结果。
-- helper executable 和 LaunchDaemon plist 必须随 App bundle 分别位于 `Contents/Resources` 与 `Contents/Library/LaunchDaemons`。构建和布局验证不等于注册、root 启动或管理员批准。
-- helper 升级必须先失效旧 XPC，等待 `SMAppService` 异步注销完成，并连续观察系统状态稳定为 `notRegistered` 或 `notFound` 后，才注册一次当前签名版本。升级动作需要独立确认，不得与 `startTurbo()` 合并，失败后不得自动重试注册。
+- helper executable 和 ServiceManagement LaunchDaemon plist 必须随 App bundle 分别位于 `Contents/Resources` 与 `Contents/Library/LaunchDaemons`。ad hoc 路径的 `.command` 安装器和固定 `ProgramArguments` plist 必须位于 `Contents/Resources`，发布构建需读回可执行权限和 plist 语法。构建和布局验证不等于安装、root 启动或管理员批准。
+- Developer Team 路径的 helper 升级必须先失效旧 XPC，等待 `SMAppService` 异步注销完成，并连续观察系统状态稳定为 `notRegistered` 或 `notFound` 后，才注册一次当前签名版本。ad hoc 路径必须拒绝现存租约和不明旧 job，使用固定系统路径、root ownership 与有界回滚；App 或 helper 代码哈希变化时重新安装。两条路径的升级动作都需要独立确认，不得与 `startTurbo()` 合并，失败后不得自动重试或继续 Turbo。
 - 裸 helper executable 必须嵌入生成的 Info.plist section，使代码签名 identifier 由 `PRODUCT_BUNDLE_IDENTIFIER` 稳定决定。不能只检查 build setting，至少用一次签名产物读回实际 identifier。
 - UI 只有在 stop 返回无错误 inactive 后才显示苹果自动。连接、写入、读回或恢复结果不可信时显示 failed-safe-auto，不把状态查询失败降级成 inactive。
 - `Ftst` 写入按异步状态变化处理。启动前只有明确读回 0 才允许声明可接管；未知值不能视为未占用，也不能在风扇写入返回 thermal manager busy 后补写 `Ftst`。持久化所有权并写 1 后每 100 毫秒读回，只有连续两次为 1 才能继续，3 秒内仍不稳定就失败并恢复，不能用紧邻写入的旧值判断成功或失败。恢复时只要租约记录过接管，就始终写 0，保留 3 秒稳定等待和读回，之后才允许删除租约。
@@ -45,7 +45,7 @@
 - 状态机、解析和边界验证优先纯逻辑测试；真实 SMC 写入使用显式人工授权的设备验收。
 - 普通 `ThermalPulse` scheme 的测试默认跳过真实 AppleSMC；只读实机枚举使用显式 `ThermalPulseHardwareProbe` scheme，避免日常测试隐式依赖硬件。
 - 发布 tag 必须使用 `vX.Y.Z`，并与工程 `MARKETING_VERSION` 完全一致。公开产物只允许 macOS 26 arm64 DMG 和对应 SHA-256；工作流必须先验证普通测试、Release App 版本、ad hoc deep strict 签名、DMG CRC 与挂载后 App，不得只上传未经读回的构建目录。
-- GitHub Actions 没有 Developer ID 签名材料时，只能发布明确标注的只读监控预览包。禁止把签名私钥提交到仓库，禁止为了让公开 DMG 使用 Turbo 而放宽非空同 Team、固定 identifier 或 Apple 签名锚点要求。
+- GitHub Actions 没有 Developer ID 签名材料时，公开包必须明确标注 ad hoc、未公证和管理员安装风险。若包含 Turbo，App/helper 必须使用 hardened runtime ad hoc 签名，工作流必须验证双方 strict 完整性、固定 identifier、CDHash requirement、安装器语法和手动 LaunchDaemon plist；运行时必须使用 root-owned manifest 固定双方代码哈希。禁止把签名私钥提交到仓库，也禁止退化成任意无签名 helper、仅 bundle identifier、可变安装路径或通用 root 写接口。
 - Apple Silicon MacBook Pro 的硬件刻画按动态 `Tp*`、`Te*`、电池和风扇能力族验收，不在测试中维护 M4、M5 或具体机型的候选 key 表。`F{i}Md` 与 `F{i}md` 都必须通过动态发现支持；探针读到外部 manual mode 时只能记录并阻断 Turbo，不能为完成测试而改写模式。
 - P 核摘要只动态聚合有效、有限、10 至 120 °C、`flt` 类型且 key 以 `Tp` 开头的候选；E 核摘要使用相同约束并要求 key 以 `Te` 开头。P 核与 E 核向用户显示当前最高候选，电池显示 `TB1T` 与 `TB2T` 平均。不得硬编码候选表，不得把候选数称为核心数，不得给单个 key 添加具体核心编号；无有效输入时显示未知。
 - 默认温度面板只允许三类证据映射：P 核 `Tp*` float 候选族、E 核 `Te*` float 候选族、电池 `TB1T/TB2T`。缺失类别显示不可用，不使用其他热区回退，也不根据当前数值猜身份。
