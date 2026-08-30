@@ -17,6 +17,12 @@
 - macOS 26 及以上 Apple 芯片 MacBook Pro 的菜单栏只读监控。
 - P 核、E 核热点、电池平均温度、固定 5 分钟曲线、系统 thermal state，以及动态单风扇或双风扇 RPM 展示。
 
+### Published
+
+- GitHub Actions run `33323101547` 在 tag commit `1e60cc9` 上完成全部步骤并返回 success，Release API 读回 v0.0.1 为非 draft 的 prerelease。
+- Release 包含 `ThermalPulse-v0.0.1-macos-arm64.dmg` 和对应 `.sha256` 文件。GitHub 记录的 DMG 大小为 1,009,631 字节，SHA-256 为 `c7bffd934a18cf4b3a1162e161e8cf0db8193b71fc3f2f0521e2198a8a713f0d`。
+- 从 GitHub Release 重新下载两个资产后，SHA-256 文件校验通过；DMG CRC、只读挂载、App deep strict 完整性、版本 `0.0.1` 与 arm64 Mach-O 读回全部通过。
+
 ### Not included
 
 - 公开 runner 没有 Developer ID 证书、私钥和公证凭证。v0.0.1 DMG 使用 ad hoc 签名且未公证，没有可信 Team ID，因此 Turbo 按安全设计不可用。

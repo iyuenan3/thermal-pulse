@@ -51,4 +51,4 @@
 - 2026-08-30：用户显式升级协议 v6 helper 并完成快速接管短测。`Ftst` 约 0.98 秒后稳定接管，两台风扇约 8.78 秒后取得实际 RPM 上升证据；用户主动停止后恢复日志无错误、租约删除，事后只读门禁确认 Apple 管理模式与 `Ftst=0`。
 - 2026-08-30：完成协议 v7 安全审查，修复恢复失败延迟重试、未知 `Ftst` 写入、并发 XPC 请求争用与多风扇状态项扩张。提交 `934721e` 的完整普通测试 74 项通过、4 项按设计跳过，独立只读恢复门禁 1 项通过，v7 Personal Team App 与内嵌 helper 签名构建通过；未升级系统 helper 或执行新的 Turbo。
 - 2026-08-30：在第二台 Mac17,2、Apple M5 MacBook Pro 完成单风扇只读适配。探针读回 1 台风扇、小写 `F0md`、动态最大值、P/E 温度族和两枚电池温度；菜单栏右列改为单风扇垂直居中、双风扇上下排列。M4 Pro 与 M5 的完整普通测试均为 76 项通过、4 项按设计跳过；M5 临时无签名 App 已创建菜单栏状态项并完成首次扫描，没有安装 helper 或尝试 Turbo。
-- 2026-08-31：建立 v0.0.1 GitHub Actions DMG 发布链路。工程版本、tag 校验、普通测试、macOS 26 arm64 Release 构建、ad hoc 签名、DMG CRC、只读挂载、App 版本与架构读回、SHA-256 生成均已在本机同口径验证；Developer ID、公证和公开 Turbo 明确不包含在本版。
+- 2026-08-31：建立并实际运行 v0.0.1 GitHub Actions DMG 发布链路。工程版本、tag 校验、普通测试、macOS 26 arm64 Release 构建、ad hoc 签名、DMG CRC、只读挂载、App 版本与架构读回、SHA-256 生成全部通过；GitHub Release 与两个资产已独立回读，重新下载后的 DMG 校验和挂载复验通过。Developer ID、公证和公开 Turbo 明确不包含在本版。
