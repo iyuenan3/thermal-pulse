@@ -152,8 +152,9 @@ jobs:
           printf '%s\n' \
             "# ThermalPulse ${GITHUB_REF_NAME}" \
             "" \
-            "首个公开预览版本，支持 macOS 26 及以上的 Apple 芯片 MacBook Pro。" \
+            "公开预览版本，支持 macOS 26 及以上的 Apple 芯片 MacBook Pro。" \
             "" \
+            "- 新增正式 ThermalPulse App 图标。" \
             "- 菜单栏显示 P 核、E 核温度和动态风扇转速。" \
             "- 展开面板显示电池温度、5 分钟温度曲线、系统热状态和全部风扇。" \
             "- 单风扇转速居中显示，双风扇转速上下显示。" \

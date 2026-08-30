@@ -27,9 +27,9 @@ Mac16,7、Apple M4 Pro 已验证双风扇监控和一次短时 Turbo；Mac17,2�
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/iyuenan3/thermal-pulse/releases) 下载 `ThermalPulse-v0.0.1-macos-arm64.dmg`，打开后把 ThermalPulse 拖入 Applications。
+从 [GitHub Releases](https://github.com/iyuenan3/thermal-pulse/releases) 下载 `ThermalPulse-v0.1.0-macos-arm64.dmg`，打开后把 ThermalPulse 拖入 Applications。
 
-`v0.0.1` 是由 GitHub Actions 构建的 ad hoc 签名预览版，未经过 Apple 公证。首次启动可在 Finder 中右键点击 App，然后选择“打开”。普通只读监控可以使用，但公开 DMG 没有 Developer ID Team ID，因此 Turbo 会按安全设计保持不可用。
+`v0.1.0` 是由 GitHub Actions 构建的 ad hoc 签名预览版，未经过 Apple 公证。首次启动可在 Finder 中右键点击 App，然后选择“打开”。普通只读监控可以使用，但公开 DMG 没有 Developer ID Team ID，因此 Turbo 会按安全设计保持不可用。
 
 ## 本地构建
 
