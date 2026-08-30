@@ -2,13 +2,15 @@
 
 ## 主机 + 环境
 
-计划运行在带主动散热的 Apple Silicon Mac。首台开发与验收机为 Mac16,7、Apple M4 Pro；其他机型必须经过只读探测与真实写入验收后再加入支持矩阵。
+计划运行在 Apple Silicon MacBook Pro。Mac16,7、Apple M4 Pro 是首台开发与 Turbo 验收机；Mac17,2、Apple M5 是第二台只读监控与单风扇布局验收机。其他 Apple Silicon MacBook Pro 必须先经过只读探测，Turbo 还需独立真实写入与恢复验收后才能加入对应支持矩阵；其他 Mac 产品线当前不在范围内。
 
 最低系统正式设为 macOS 26.0，不支持 macOS 25 及更早版本。工程的 Debug、Release 和 HardwareProbe configuration 统一使用 `MACOSX_DEPLOYMENT_TARGET = 26.0`，以 Xcode 26.6 构建和测试。
 
 ## 怎么起
 
-当前支持关闭代码签名的本地测试构建和 Personal Team 本机签名构建，不提供安装包。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仍运行该 v6 App 与 root helper，租约目录为空。代码审查后的 v7 只完成源码、测试、签名构建与只读恢复门禁，没有升级系统 helper 或执行新的 Turbo。该本机原型不得替代 Developer ID 分发、公证或其他机型验收。
+当前支持关闭代码签名的本地测试构建和 Personal Team 本机签名构建，不提供安装包。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仅保留该 v6 root helper，本机 App 已退出，租约目录为空。代码审查后的 v7 只完成源码、测试、签名构建与只读恢复门禁，没有升级系统 helper 或执行新的 Turbo。该本机原型不得替代 Developer ID 分发、公证或其他机型验收。
+
+第二台 M5 验收机只从一次性 `/private/tmp` 工作目录构建和启动无签名 Debug App，没有复制到 Applications、注册登录项或安装 helper。该 App 已创建菜单栏状态项并完成首次只读扫描；无签名构建按设计不能连接 privileged helper。2026-08-31 已按用户要求发送正常退出信号，并复查确认没有残留 ThermalPulse 进程。临时运行不等于安装或分发验收。
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ThermalPulse.xcodeproj -scheme ThermalPulse -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
@@ -60,7 +62,7 @@ N/A。项目是本地菜单栏 App，不提供服务器、域名、远程访问�
 - 随后一次用户授权的 v4 短测进入 active。独立读回 `Ftst=1`、两台风扇 mode 1、目标原始字节等于动态 5777 RPM 最大值，实际样本分别约为 5701 至 5855 RPM、5775 至 5778 RPM。主动停止后两台风扇 mode 3、`Ftst=0`、lease 不存在，helper 记录无错误恢复。工作树已把实际 RPM 可信上限调整为动态最大值 105%，修复 active 文案并升级协议 v5；v5 签名产物已验证，但未调用 `SMAppService` 升级，也未再次启动 Turbo。
 - 用户随后从唯一运行的 v5 Personal Team 签名 App 完成 helper 升级并确认验收通过。升级后 App 与 helper 进程均来自指定 v5 构建，`launchctl` 读回新的 root helper 由 ServiceManagement 管理、Mach endpoint 活跃，租约目录为空。本轮独立读回不包含再次启动 Turbo、模式、目标或实际 RPM，因此不替代此前 v4 短测，也不覆盖故障恢复路径。
 - 随后工作树将启动时 `Ftst=1` 的固定 3 秒等待改为 100 毫秒轮询、连续两次稳定读回和 3 秒失败上限，并把私有 XPC 协议升级为 v6。Personal Team Debug App 与内嵌 v6 helper 通过 strict 签名校验后，用户显式完成 helper 升级和一次短时 Turbo。日志显示从 `activation_started` 到 `thermal_manager_unlock_claimed` 约 0.98 秒，从启动到实际 RPM 上升确认约 8.78 秒；两台风扇当时分别约为 1321 RPM 和 1423 RPM，动态最大值均为 5777 RPM。用户主动停止后 helper 记录 `restoration_completed issue=none`，租约目录为空；后续独立只读门禁 1 项通过，确认两台风扇为 Apple 管理且 `Ftst=0`。该证据不覆盖 600 秒到期、App 崩溃、XPC 断开、helper 重启或休眠恢复。
-- 对 v6 基线的代码审查发现恢复失败重试、未知 `Ftst` 写入和并发 XPC 请求隔离缺口。提交 `934721e` 修复这些问题并将协议提升到 v7。完整普通测试 74 项通过、4 项真实硬件测试按设计跳过，Personal Team v7 App 与内嵌 helper 均通过 strict 签名校验。当前系统仍运行 v6 helper 和 v6 App；本轮没有调用 `SMAppService` 升级、没有启动 Turbo，也没有写 SMC。未来首次运行 v7 App 时会按协议不兼容禁用 Turbo，必须由用户单独确认升级 helper。
+- 对 v6 基线的代码审查发现恢复失败重试、未知 `Ftst` 写入和并发 XPC 请求隔离缺口。提交 `934721e` 修复这些问题并将协议提升到 v7。完整普通测试 74 项通过、4 项真实硬件测试按设计跳过，Personal Team v7 App 与内嵌 helper 均通过 strict 签名校验。当前系统仅运行 v6 helper，v6 App 已退出；本轮没有调用 `SMAppService` 升级、没有启动 Turbo，也没有写 SMC。未来首次运行 v7 App 时会按协议不兼容禁用 Turbo，必须由用户单独确认升级 helper。
 
 ## 备份 / 升级 / 回滚
 

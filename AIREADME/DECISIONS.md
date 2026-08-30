@@ -290,3 +290,12 @@
 - Decision: failed-safe-auto 且租约存在时，watchdog 下一 tick 立即再次执行恢复；启动前只有明确 `Ftst=0` 才允许声明可接管，未知值直接拒绝且不能因 manual write busy 补写；`TurboXPCClient` 以请求身份分别跟踪 continuation 和超时，允许状态查询与停止共存，连接失效时才统一失败剩余请求。取消后的状态轮询结果不得覆盖停止结果。菜单栏模板图片只显示前两台动态风扇，完整枚举留在面板和辅助功能描述。
 - Alternatives（否决）: 保持租约直到截止时间再重试；把未知 `Ftst` 当成 0；停止前等待状态轮询超时；为每种请求建立独立 XPC 连接；继续让第三台及更多风扇扩张状态项宽度。
 - Tradeoff: 恢复故障期间 helper 会每 300 毫秒重试受限恢复，增加少量 AppleSMC 访问；持久连接状态管理从单请求变为按请求字典，但停止交互不再被后台轮询阻塞。安全语义变化把私有协议提升到 v7，当前已注册 v6 helper 不会被自动替换，也不会被 v7 App 当成兼容实现。
+
+## ADR-035 · Apple Silicon MacBook Pro 使用能力发现适配单与双风扇 · 2026-08-30
+
+- Problem: 首台 Mac16,7、Apple M4 Pro 有 2 台风扇，状态项据此形成右侧上下两行。第二台 Mac17,2、Apple M5 只有 1 台风扇，如果继续填充第二行占位，单个转速会贴在右上且视觉失衡；原硬件刻画测试还保留 M4 专属候选 key 表，无法作为其他 MacBook Pro 的通用验收。
+- Constraint: 当前产品范围只覆盖 macOS 26 以上 Apple Silicon MacBook Pro；风扇数量、模式 key、最大值和温度族必须动态读取，不能新增按机型硬编码表。展开面板必须保留全部风扇；Turbo 仍要求逐机型实机写入和恢复证据，不能因为只读监控通过而自动开放。
+- Evidence: M5 普通权限探针读回 `FNum=1`、小写 `F0md`、`F0Mx=6550 RPM`，并取得 14 个有效 `Tp` 候选、4 个有效 `Te` 候选和两枚电池温度。单风扇探针与 12 秒温度族刻画分别通过；M4 Pro 与 M5 的完整普通测试都为 76 项通过、4 项硬件测试按设计跳过。M5 当时风扇已处于外部 manual mode 1，ThermalPulse 没有抢占。
+- Decision: 产品范围暂定为 macOS 26 以上 Apple Silicon MacBook Pro。菜单栏左列固定显示 P/E，右列按动态风扇数布局：0 或 1 台时显示垂直居中的占位或转速，2 台及以上时上下显示前两台；更多风扇只在展开面板和辅助功能描述完整呈现。温度刻画统一使用动态 `Tp*`、`Te*` 族级证据，模式 key 同时发现 `Md` 与 `md`，不按 M4 或 M5 建表。监控支持与 Turbo 支持分开记录。
+- Alternatives（否决）: 为 M5 单独写一个界面分支；继续在单风扇机器显示空白第二行；按机型 identifier 保存风扇数量和 key；把两台设备的只读成功外推为全部 Apple Silicon MacBook Pro 或 M5 Turbo 通过。
+- Tradeoff: 状态项保持紧凑且能覆盖已知单、双风扇 MacBook Pro，但其他 Apple Silicon MacBook Pro 仍需逐台积累目录证据。能力发现减少机型表维护，不能消除 AppleSMC 非公开接口和 Turbo 实机验收成本。

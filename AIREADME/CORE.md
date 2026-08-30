@@ -2,7 +2,7 @@
 
 ## 身份
 
-ThermalPulse 是一款原生 macOS 菜单栏小工具，用一个紧凑面板展示设备温度、风扇和系统热状态，并提供一次最多 10 分钟的 Turbo 全速散热。
+ThermalPulse 是一款面向 macOS 26 以上 Apple Silicon MacBook Pro 的原生菜单栏小工具，用一个紧凑面板展示设备温度、风扇和系统热状态，并提供一次最多 10 分钟的 Turbo 全速散热。
 
 ## 使命 / 解决什么问题
 
@@ -15,7 +15,8 @@ ThermalPulse 是一款原生 macOS 菜单栏小工具，用一个紧凑面板展
 - 不提供任意风扇转速、任意 SMC key 或脚本化写入能力。
 - 首版不提供云同步、账户、远程控制、后台上传或跨设备看板。
 - 不依据未经实机验证的 key 名称给传感器贴确定标签。
-- 不因为当前开发机通过就宣称支持全部 Apple Silicon Mac。
+- 当前不承诺支持 Intel Mac、MacBook Air、Mac mini、Mac Studio、iMac 或 Mac Pro。
+- 不因为一台或两台 MacBook Pro 通过就宣称全部 Apple Silicon MacBook Pro 的 Turbo 已验收。
 
 ## 绝不 / Hard Constraints（红线）
 
@@ -31,4 +32,4 @@ ThermalPulse 是一款原生 macOS 菜单栏小工具，用一个紧凑面板展
 
 ## 生命周期
 
-active，pre-alpha。当前工作树已把产品收敛为菜单栏单面板，只展示 P 核热点、E 核热点、电池平均温度、风扇与系统热状态，并提供一张固定 5 分钟温度曲线。当前 Mac16,7 已实测 102 个有效 `Tp` float 候选、10 个有效 `Te` float 候选，以及 `TB1T`、`TB2T` 两枚电池温度；这些证据支持族级热点或平均展示，不支持逐 key 核心命名。核心温度曲线继续使用会话内稳定代表 key，但展示前会丢弃 10 至 120 °C 之外的哨兵点，避免把 0 °C 画成真实温度。协议 v6 helper 已完成一次用户授权的短时 Turbo：`Ftst` 稳定接管约 0.98 秒，实际 RPM 上升在约 8.78 秒后确认，主动停止恢复、租约删除及事后 Apple 管理模式与 `Ftst=0` 只读门禁均通过。代码审查后的协议 v7 又补上恢复失败立即重试、未知 `Ftst` 禁止写入、XPC 并发请求隔离与固定前两台风扇摘要；源码、74 项普通测试、1 项只读恢复门禁和签名构建均通过。当前系统 helper 仍为 v6，v7 尚未升级或实机写入。600 秒到期、App 崩溃、XPC 断开、helper 重启和休眠恢复仍待独立验收。
+active，pre-alpha。当前工作树已把产品收敛为菜单栏单面板，只展示 P 核热点、E 核热点、电池平均温度、风扇与系统热状态，并提供一张固定 5 分钟温度曲线。Mac16,7、Apple M4 Pro 已实测 102 个有效 `Tp` float 候选、10 个有效 `Te` float 候选、两枚电池温度和 2 台风扇；Mac17,2、Apple M5 已实测 14 个有效 `Tp` 候选、4 个有效 `Te` 候选、两枚电池温度和 1 台风扇。菜单栏按动态风扇数量布局，单风扇在右列垂直居中，双风扇上下显示，不使用机型 key 表。协议 v6 helper 已在 Mac16,7 完成短时 Turbo 的快速接管、active 与主动停止恢复；协议 v7 的安全加固只完成源码、测试和签名构建。M5 当前只完成普通权限只读监控，探测时已有外部手动风扇控制，未注册 helper 或尝试 Turbo。当前产品范围暂定为 macOS 26 以上 Apple Silicon MacBook Pro，Turbo 仍按机型和恢复场景分别验收。

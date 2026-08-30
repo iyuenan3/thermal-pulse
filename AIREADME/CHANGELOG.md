@@ -4,6 +4,25 @@
 
 当前已有可执行的只读监控里程碑，尚无 release。
 
+## Unreleased · Apple Silicon MacBook Pro 单风扇适配 · 2026-08-30
+
+### Changed
+
+- 当前产品范围收敛为 macOS 26 以上 Apple Silicon MacBook Pro。监控使用动态能力发现，不按 M4、M5 或机型 identifier 保存风扇数量、温度 key 和 RPM 表，见 ADR-035。
+- 菜单栏左列继续上下显示 P/E 核热点。右列动态枚举到 0 或 1 台风扇时显示一个垂直居中的占位或转速，2 台及以上时上下显示前两台，完整风扇列表继续保留在展开面板和辅助功能描述。
+- HardwareProbe 温度刻画移除 M4 Pro 专属候选 key 表，改为复用产品的动态 `Tp*` 与 `Te*` 族级策略。
+
+### Validated
+
+- 第二台 Mac17,2、Apple M5 MacBook Pro 普通权限探针读回 2778 个 SMC key、1 台风扇、小写 `F0md`、6550 RPM 动态最大值、14 个有效 `Tp` 候选、4 个有效 `Te` 候选和两枚电池温度。单风扇探针与 12 秒温度族刻画分别通过。
+- 临时无签名 App 在 M5 登录桌面成功创建菜单栏状态项，首次扫描完成并选择 P 核、E 核和电池三条曲线。无签名构建不能连接 helper，未写 SMC。
+- Mac16,7、Apple M4 Pro 与 Mac17,2、Apple M5 的完整普通测试均为 80 项，其中 76 项通过、4 项真实硬件测试按设计跳过、0 项失败。M5 无签名 Debug App 构建成功。
+
+### Not included
+
+- M5 探测时风扇已处于外部 manual mode 1。本轮没有识别或停止外部控制工具，没有注册、升级或连接 helper，也没有尝试 Turbo。
+- 当前证据不代表其他 Apple Silicon MacBook Pro 已验收，也不代表 M5 的 Turbo、停止或故障恢复通过。
+
 ## Unreleased · Turbo v6 实机短测与 v7 安全审查 · 2026-08-30
 
 ### Changed
