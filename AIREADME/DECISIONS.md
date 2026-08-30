@@ -299,3 +299,12 @@
 - Decision: 产品范围暂定为 macOS 26 以上 Apple Silicon MacBook Pro。菜单栏左列固定显示 P/E，右列按动态风扇数布局：0 或 1 台时显示垂直居中的占位或转速，2 台及以上时上下显示前两台；更多风扇只在展开面板和辅助功能描述完整呈现。温度刻画统一使用动态 `Tp*`、`Te*` 族级证据，模式 key 同时发现 `Md` 与 `md`，不按 M4 或 M5 建表。监控支持与 Turbo 支持分开记录。
 - Alternatives（否决）: 为 M5 单独写一个界面分支；继续在单风扇机器显示空白第二行；按机型 identifier 保存风扇数量和 key；把两台设备的只读成功外推为全部 Apple Silicon MacBook Pro 或 M5 Turbo 通过。
 - Tradeoff: 状态项保持紧凑且能覆盖已知单、双风扇 MacBook Pro，但其他 Apple Silicon MacBook Pro 仍需逐台积累目录证据。能力发现减少机型表维护，不能消除 AppleSMC 非公开接口和 Turbo 实机验收成本。
+
+## ADR-036 · 首个公开版本以 ad hoc DMG 交付只读监控 · 2026-08-31
+
+- Problem: 用户需要通过 GitHub Actions 发布 v0.0.1 DMG，但当前没有可供云端使用的 Developer ID Application 证书、私钥和公证凭证。Turbo 的 XPC 安全模型又要求 App 与 helper 具有 Apple 信任链、固定 identifier 和相同非空 Team ID。
+- Constraint: 发布过程不能上传本机签名私钥，不能撤销或替换其他项目证书，也不能为公开构建放宽 helper 调用方校验。产物必须是 macOS 26 arm64 DMG，并能从构建结果独立读回版本、签名完整性和挂载内容。
+- Evidence: GitHub 官方 `macos-26-arm64` runner 当前提供 Xcode 26.6；本机同口径普通测试与 Release 构建通过，ad hoc App 通过 deep strict 校验，DMG 通过 CRC、只读挂载、版本 `0.0.1` 和 arm64 Mach-O 读回。ad hoc 签名没有 Team ID，因此现有客户端会拒绝 helper。
+- Decision: `vX.Y.Z` tag 触发 GitHub Actions，tag 必须与 `MARKETING_VERSION` 一致。工作流运行普通测试、构建 Release、ad hoc 签名 App 与 helper、生成并挂载验证压缩 DMG、生成 SHA-256，再创建 prerelease。v0.0.1 公开 DMG 明确只支持普通权限只读监控，Turbo 保持不可用。
+- Alternatives（否决）: 把 Personal Team 私钥导出到仓库；撤销或复用其他项目证书；在无 Team ID 时只按 bundle identifier 信任 App；手工上传未经 CI 验证的 DMG；把源码 ZIP 当作桌面发布产物。
+- Tradeoff: 用户可以从 GitHub 获得可重复构建的 DMG，但首次启动仍需接受未公证提示，公开包暂时不能使用 Turbo。正式分发需要未来加入 Developer ID 签名与 Apple 公证，不影响本机 Personal Team 的独立 Turbo 验收。

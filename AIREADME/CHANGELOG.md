@@ -2,7 +2,25 @@
 
 > append-only，版本块倒序。这里只记录 release 或明确里程碑，原因指向 DECISIONS，未来方向写入 ROADMAP。
 
-当前已有可执行的只读监控里程碑，尚无 release。
+当前首个公开预览版本为 v0.0.1。
+
+## v0.0.1 · 首个公开 DMG 预览版 · 2026-08-31
+
+### Added
+
+- 新增由 `vX.Y.Z` tag 触发的 GitHub Actions 发布流程，使用 macOS 26 arm64 runner 构建 `ThermalPulse-vX.Y.Z-macos-arm64.dmg`，见 ADR-036。
+- 工程加入 `MARKETING_VERSION=0.0.1` 与 build number 1。工作流强制 tag 与工程版本一致，并同时发布 DMG 的 SHA-256 文件。
+- DMG 包含 ThermalPulse App 与 Applications 快捷入口。发布门禁包含普通测试、Release 构建、App 和 helper ad hoc 签名、deep strict 校验、DMG CRC、只读挂载、App 版本和 arm64 架构读回。
+
+### Included
+
+- macOS 26 及以上 Apple 芯片 MacBook Pro 的菜单栏只读监控。
+- P 核、E 核热点、电池平均温度、固定 5 分钟曲线、系统 thermal state，以及动态单风扇或双风扇 RPM 展示。
+
+### Not included
+
+- 公开 runner 没有 Developer ID 证书、私钥和公证凭证。v0.0.1 DMG 使用 ad hoc 签名且未公证，没有可信 Team ID，因此 Turbo 按安全设计不可用。
+- 本版本不代表 M5 Turbo、全部故障恢复场景或其他 Apple 芯片 MacBook Pro 已通过实机验收。
 
 ## Unreleased · Apple Silicon MacBook Pro 单风扇适配 · 2026-08-30
 

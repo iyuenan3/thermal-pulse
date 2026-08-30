@@ -72,6 +72,7 @@ helper 持有绝对截止时间与进程内单调截止时间，300 毫秒 activ
 ## 版本 / 兼容
 
 - pre-1.0 阶段不承诺私有 XPC ABI 稳定，但 App 与 helper 必须带同一协议版本并拒绝不兼容组合。
+- v0.0.1 公开 DMG 是 ad hoc 签名、未公证的只读监控预览版。由于没有可信 Team ID，App 必须报告 helper unavailable，不能注册或调用 Turbo；本机 Personal Team 构建仍是独立验收通道。
 - 当前产品支持范围为 macOS 26 以上 Apple Silicon MacBook Pro。Mac16,7 已验证双风扇监控和短时 Turbo，Mac17,2 已验证单风扇只读监控；其他 Apple Silicon MacBook Pro 在实机证据进入支持矩阵前保持未验证，其他 Mac 产品线不在当前支持范围。
 - 机型支持按真实设备验证逐台增加，不采用“M1 到 M5 默认兼容”声明。
 - 破坏性产品行为变化需要更新 PRD、DECISIONS 和 CHANGELOG。

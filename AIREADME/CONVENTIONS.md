@@ -43,6 +43,8 @@
 - 持有租约的 XPC 连接断开、helper 启动发现旧租约或系统唤醒时立即恢复，不自动续跑。active 看门狗每 300 毫秒检查绝对和单调截止时间、`Ftst`、动态风扇集合、模式、实时最大目标与实际 RPM；只在 ThermalPulse 自己的有效租约内执行有界协调，任一状态无法重新确认或任一截止时间到期即恢复。
 - 状态机、解析和边界验证优先纯逻辑测试；真实 SMC 写入使用显式人工授权的设备验收。
 - 普通 `ThermalPulse` scheme 的测试默认跳过真实 AppleSMC；只读实机枚举使用显式 `ThermalPulseHardwareProbe` scheme，避免日常测试隐式依赖硬件。
+- 发布 tag 必须使用 `vX.Y.Z`，并与工程 `MARKETING_VERSION` 完全一致。公开产物只允许 macOS 26 arm64 DMG 和对应 SHA-256；工作流必须先验证普通测试、Release App 版本、ad hoc deep strict 签名、DMG CRC 与挂载后 App，不得只上传未经读回的构建目录。
+- GitHub Actions 没有 Developer ID 签名材料时，只能发布明确标注的只读监控预览包。禁止把签名私钥提交到仓库，禁止为了让公开 DMG 使用 Turbo 而放宽非空同 Team、固定 identifier 或 Apple 签名锚点要求。
 - Apple Silicon MacBook Pro 的硬件刻画按动态 `Tp*`、`Te*`、电池和风扇能力族验收，不在测试中维护 M4、M5 或具体机型的候选 key 表。`F{i}Md` 与 `F{i}md` 都必须通过动态发现支持；探针读到外部 manual mode 时只能记录并阻断 Turbo，不能为完成测试而改写模式。
 - P 核摘要只动态聚合有效、有限、10 至 120 °C、`flt` 类型且 key 以 `Tp` 开头的候选；E 核摘要使用相同约束并要求 key 以 `Te` 开头。P 核与 E 核向用户显示当前最高候选，电池显示 `TB1T` 与 `TB2T` 平均。不得硬编码候选表，不得把候选数称为核心数，不得给单个 key 添加具体核心编号；无有效输入时显示未知。
 - 默认温度面板只允许三类证据映射：P 核 `Tp*` float 候选族、E 核 `Te*` float 候选族、电池 `TB1T/TB2T`。缺失类别显示不可用，不使用其他热区回退，也不根据当前数值猜身份。
