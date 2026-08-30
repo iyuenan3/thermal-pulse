@@ -8,7 +8,7 @@
 
 ## 怎么起
 
-当前支持关闭代码签名的本地测试构建、Personal Team 本机签名构建，以及 v0.0.1 GitHub Actions DMG 预览包。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仅保留该 v6 root helper，本机 App 已退出，租约目录为空。代码审查后的 v7 只完成源码、测试、签名构建与只读恢复门禁，没有升级系统 helper 或执行新的 Turbo。公开 DMG 不替代 Personal Team 本机验收，也不代表 Developer ID、公证或其他机型 Turbo 已通过。
+当前支持关闭代码签名的本地测试构建、Personal Team 本机签名构建，以及 GitHub Actions DMG 预览包。v0.1.0 候选已接入正式 AppIcon，版本为 `0.1.0 (2)`；本地普通测试、Release 构建、ad hoc deep strict 签名、DMG CRC、只读挂载、图标、版本和 arm64 架构门禁均已通过，等待 tag 触发公开发布。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仅保留该 v6 root helper，本机 App 已退出，租约目录为空。代码审查后的 v7 只完成源码、测试和签名构建与只读恢复门禁，没有升级系统 helper 或执行新的 Turbo。公开 DMG 不替代 Personal Team 本机验收，也不代表 Developer ID、公证或其他机型 Turbo 已通过。
 
 第二台 M5 验收机只从一次性 `/private/tmp` 工作目录构建和启动无签名 Debug App，没有复制到 Applications、注册登录项或安装 helper。该 App 已创建菜单栏状态项并完成首次只读扫描；无签名构建按设计不能连接 privileged helper。2026-08-31 已按用户要求发送正常退出信号，并复查确认没有残留 ThermalPulse 进程。临时运行不等于安装或分发验收。
 

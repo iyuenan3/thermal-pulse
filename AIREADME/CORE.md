@@ -32,4 +32,4 @@ ThermalPulse 是一款面向 macOS 26 以上 Apple Silicon MacBook Pro 的原生
 
 ## 生命周期
 
-active，pre-alpha。当前工作树已把产品收敛为菜单栏单面板，只展示 P 核热点、E 核热点、电池平均温度、风扇与系统热状态，并提供一张固定 5 分钟温度曲线。Mac16,7、Apple M4 Pro 已实测 102 个有效 `Tp` float 候选、10 个有效 `Te` float 候选、两枚电池温度和 2 台风扇；Mac17,2、Apple M5 已实测 14 个有效 `Tp` 候选、4 个有效 `Te` 候选、两枚电池温度和 1 台风扇。菜单栏按动态风扇数量布局，单风扇在右列垂直居中，双风扇上下显示，不使用机型 key 表。协议 v6 helper 已在 Mac16,7 完成短时 Turbo 的快速接管、active 与主动停止恢复；协议 v7 的安全加固只完成源码、测试和签名构建。M5 当前只完成普通权限只读监控，探测时已有外部手动风扇控制，未注册 helper 或尝试 Turbo。首个公开预览版本为 v0.0.1，GitHub Actions 只发布 ad hoc 签名、未公证的 Apple Silicon DMG，因此公开包仅提供只读监控，Turbo 仍按签名、机型和恢复场景分别验收。
+active，pre-alpha。当前工作树已把产品收敛为菜单栏单面板，只展示 P 核热点、E 核热点、电池平均温度、风扇与系统热状态，并提供一张固定 5 分钟温度曲线。Mac16,7、Apple M4 Pro 已实测 102 个有效 `Tp` float 候选、10 个有效 `Te` float 候选、两枚电池温度和 2 台风扇；Mac17,2、Apple M5 已实测 14 个有效 `Tp` 候选、4 个有效 `Te` 候选、两枚电池温度和 1 台风扇。菜单栏按动态风扇数量布局，单风扇在右列垂直居中，双风扇上下显示，不使用机型 key 表。协议 v6 helper 已在 Mac16,7 完成短时 Turbo 的快速接管、active 与主动停止恢复；协议 v7 的安全加固只完成源码、测试和签名构建。M5 当前只完成普通权限只读监控，探测时已有外部手动风扇控制，未注册 helper 或尝试 Turbo。首个公开预览版本为 v0.0.1；当前 v0.1.0 候选加入正式 App 图标，仍由 GitHub Actions 发布 ad hoc 签名、未公证的 Apple Silicon DMG，因此公开包仅提供只读监控，Turbo 仍按签名、机型和恢复场景分别验收。

@@ -2,7 +2,29 @@
 
 > append-only，版本块倒序。这里只记录 release 或明确里程碑，原因指向 DECISIONS，未来方向写入 ROADMAP。
 
-当前首个公开预览版本为 v0.0.1。
+当前已发布版本为 v0.0.1；v0.1.0 候选已通过本地发布门禁，等待 GitHub Actions 发布。
+
+## v0.1.0 · 正式 App 图标 · 2026-08-31
+
+### Added
+
+- 新增用户确认的 ThermalPulse 正式 App 图标，以温度脉冲和三叶风扇作为单一识别符号。
+- 新增 macOS AppIcon Asset Catalog，覆盖 16、32、128、256、512 pt 的 1x 与 2x 槽位，所有 PNG 均保留透明边角。
+
+### Changed
+
+- 工程 `MARKETING_VERSION` 升级为 `0.1.0`，build number 升级为 2；README 下载入口和 GitHub Release 说明同步更新。
+
+### Validated
+
+- 普通测试共 80 项，76 项通过、4 项真实硬件测试按设计跳过、0 项失败。
+- macOS 26 arm64 Release App 构建通过，Info.plist 读回版本 `0.1.0 (2)` 与 `CFBundleIconName=AppIcon`，资源目录生成 `AppIcon.icns` 和 `Assets.car`，主可执行文件读回 arm64。
+- 本地同口径测试 DMG 完成 helper 与 App ad hoc 签名、deep strict 校验、CRC、只读挂载、Applications 快捷入口、图标、版本和 arm64 架构复验。
+
+### Not included
+
+- 本候选仍未使用 Developer ID 签名或 Apple 公证，公开 DMG 的 Turbo 按既有非空同 Team 门禁保持不可用。
+- 本轮没有升级系统 helper、启动 Turbo 或执行新的真实 SMC 写入。
 
 ## v0.0.1 · 首个公开 DMG 预览版 · 2026-08-31
 
