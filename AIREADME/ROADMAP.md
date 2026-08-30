@@ -7,7 +7,7 @@
 - 已注册 v6 helper 使用 `Ftst` 100 毫秒稳定读回、恢复时重申清除、300 毫秒 active 协调、实际 RPM 105% 可信上限、阶段诊断和 ServiceManagement 稳定注册门禁。用户短测中 `Ftst` 稳定接管约 0.98 秒，实际 RPM 上升约 8.78 秒，主动停止恢复成功。协议 v7 增加恢复失败立即重试、未知 `Ftst` 禁止写入、XPC 并发请求隔离和固定前两台风扇摘要；当前工作树再升级到协议 v8，为没有付费开发者账号的朋友分发增加管理员安装、固定系统路径、root-owned manifest 与双向 CDHash 校验。系统 helper 仍为 v6，所以运行 v8 App 时 Turbo 会按协议不兼容或安装身份缺失禁用。
 - 用户已显式注册协议 v4 helper，并完成一次短时 active 与主动停止。独立探针读回两台风扇 mode 1、目标精确等于动态最大值和接近最大值的实际 RPM；停止后 mode 3、`Ftst=0`、lease 删除与 helper 无错误恢复日志均通过。实测暴露 1.35% 实际 RPM 超调和 active 风扇文案错误，工作树已修复并升级为协议 v5。用户随后完成 v5 helper 升级并确认验收通过；系统读回新的 root helper、ServiceManagement 管理、活跃 Mach endpoint 和空租约目录。
 - P 核曲线曾因稳定代表 `Tp` key 的 0 °C 哨兵值周期性跌到零。工作树现已在展示边界丢弃 P 核与 E 核 10 至 120 °C 之外的点，并保留时间缺口；用户已确认该修复验收通过。本机与 M5 的完整普通测试均为 80 项中 76 项通过、4 项真实硬件测试按设计跳过、0 项失败；M5 单风扇探针与 12 秒温度族刻画分别通过。
-- v0.1.0 已带用户确认的正式 App 图标通过 GitHub Actions 发布，并完成普通测试、Release 版本与图标、ad hoc 签名、DMG CRC、只读挂载和 arm64 架构的独立回读。v0.1.1 作为协议 v8 管理员安装测试候选发布，工作流使用 hardened runtime ad hoc 签名，并验证 App/helper 精确 CDHash requirement、安装器语法与手动 LaunchDaemon plist。发布成功后只保留最新版本 DMG 与校验文件，旧 Release 页面和标签继续保留。
+- v0.1.1 已作为协议 v8 管理员安装测试候选通过 GitHub Actions 发布。官方 DMG 的校验文件、CRC、只读挂载、版本 `0.1.1 (3)`、hardened runtime ad hoc 签名、App/helper 精确 CDHash requirement、安装器、手动 LaunchDaemon plist、AppIcon 和 arm64 架构均已独立回读。当前只保留 v0.1.1 的 DMG 与校验文件，v0.1.0 和 v0.0.1 的 Release 页面与标签继续保留但资产为空。
 
 ## Next
 

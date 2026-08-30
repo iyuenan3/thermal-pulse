@@ -8,7 +8,7 @@
 
 ## 怎么起
 
-当前支持关闭代码签名的本地测试构建、Personal Team 本机签名构建，以及 GitHub Actions DMG 预览包。带正式 AppIcon 的 v0.1.0 已通过 GitHub Actions 发布，版本为 `0.1.0 (2)`；公开资产重新下载后的 SHA-256、DMG CRC、只读挂载、deep strict 完整性、图标、版本和 arm64 架构均已通过独立回读。v0.1.1 将协议 v8 管理员安装与双向 CDHash 固定路径作为预发布安装测试候选交给用户自行安装，版本为 `0.1.1 (3)`。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仅保留该 v6 root helper，本机 App 已退出，租约目录为空。代码审查后的 v7 只完成源码、测试和签名构建与只读恢复门禁。本轮不会运行 v8 安装器、升级系统 helper、连接 XPC 或执行 Turbo。公开 DMG 不替代 Personal Team 本机验收，也不代表 Developer ID、公证、root 安装或其他机型 Turbo 已通过。
+当前支持关闭代码签名的本地测试构建、Personal Team 本机签名构建，以及 GitHub Actions DMG 预览包。v0.1.1 已把协议 v8 管理员安装与双向 CDHash 固定路径作为预发布安装测试候选交给用户自行安装，版本为 `0.1.1 (3)`；官方资产重新下载后的 SHA-256、DMG CRC、只读挂载、deep strict、安装器与 plist、精确 CDHash requirement、AppIcon 和 arm64 架构均已通过独立回读。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仅保留该 v6 root helper，本机 App 已退出，租约目录为空。代码审查后的 v7 只完成源码、测试和签名构建与只读恢复门禁。本轮没有运行 v8 安装器、升级系统 helper、连接 XPC 或执行 Turbo。公开 DMG 不替代 Personal Team 本机验收，也不代表 Developer ID、公证、root 安装或其他机型 Turbo 已通过。
 
 第二台 M5 验收机只从一次性 `/private/tmp` 工作目录构建和启动无签名 Debug App，没有复制到 Applications、注册登录项或安装 helper。该 App 已创建菜单栏状态项并完成首次只读扫描；无签名构建按设计不能连接 privileged helper。2026-08-31 已按用户要求发送正常退出信号，并复查确认没有残留 ThermalPulse 进程。临时运行不等于安装或分发验收。
 
@@ -20,7 +20,8 @@
 - GitHub Release 标记为 prerelease。公开 runner 没有 Developer ID 证书和私钥，产物未经公证，也没有可信 Team ID；协议 v8 以后只有用户把 App 放入 `/Applications` 并显式运行管理员安装器后，Turbo 才可能连接 helper。安装器把当前 App/helper CDHash 固定到 root-owned manifest，不能退化为仅 bundle identifier、可变路径或任意调用方。v0.1.1 是用户自行安装测试的候选版本，不把 CI 发布成功解释为 root 安装或 Turbo 验收。
 - v0.0.1 的 GitHub Actions run `33323101547` 已成功完成。Release API 读回非 draft prerelease 和两个 uploaded 资产；重新下载后，DMG 的 SHA-256、CRC、挂载内容、deep strict 完整性、版本与 arm64 架构均通过独立复验。
 - v0.1.0 的 GitHub Actions run `33324533793` 已成功完成，tag 指向提交 `cf85878`。Release API 读回非 draft prerelease；官方 DMG 为 4,195,525 字节，SHA-256 为 `f5f4487904e2660fddf37568b0aa97ffd28b8290759a2a5b63ca97129af2afff`。重新下载后，校验文件、DMG CRC、只读挂载、Applications 快捷入口、`AppIcon.icns`、版本 `0.1.0 (2)`、deep strict 完整性与 arm64 架构均通过独立复验。
-- 发布保留策略不保留旧版本二进制资产。工作流只删除其他 Release 中匹配 `ThermalPulse-vX.Y.Z-macos-arm64.dmg` 与对应 `.sha256` 的资产，Release 页面与 tag 继续保留。v0.1.0 完成验证后，v0.0.1 的两个旧资产已按该策略删除并回读为空。
+- v0.1.1 的 GitHub Actions run `33327236402` 已成功完成，远端注释 tag 解引用到提交 `6adaf3d`。Release API 读回非 draft prerelease；官方 DMG 为 4,202,276 字节，SHA-256 为 `a024fa6e3615edaafdd298407787654fcfcef7ed0fc13e89218c6a01108894f3`。重新下载后，校验文件、DMG CRC、只读挂载、安装器、手动 plist、版本 `0.1.1 (3)`、AppIcon、deep strict、精确 CDHash requirement 与 arm64 架构均通过独立复验。
+- 发布保留策略不保留旧版本二进制资产。工作流只删除其他 Release 中匹配 `ThermalPulse-vX.Y.Z-macos-arm64.dmg` 与对应 `.sha256` 的资产，Release 页面与 tag 继续保留。v0.1.1 完成验证后，API 回读 v0.1.0 与 v0.0.1 的资产列表均为空。
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ThermalPulse.xcodeproj -scheme ThermalPulse -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build

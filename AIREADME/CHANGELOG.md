@@ -2,7 +2,7 @@
 
 > append-only，版本块倒序。这里只记录 release 或明确里程碑，原因指向 DECISIONS，未来方向写入 ROADMAP。
 
-当前已发布版本为 v0.1.0。
+当前已发布版本为 v0.1.1。
 
 ## v0.1.1 · 协议 v8 管理员安装测试候选 · 2026-08-31
 
@@ -26,6 +26,13 @@
 - 本地普通测试共执行 83 项，79 项通过、4 项真实硬件测试按设计跳过、0 项失败。
 - 本地 macOS 26 arm64 Release 构建通过。临时 DMG 完成 hardened runtime ad hoc 签名、双方 40 位 CDHash requirement、CRC、只读挂载、版本 `0.1.1 (3)`、AppIcon 与 arm64 主程序回读。
 - 本地测试 DMG 为 4,202,360 字节，SHA-256 为 `ba68fb553ca2ab5a012b1a807175790f461205a9e482f587484aa7a016c9a521`。该值只对应本地临时产物，官方 GitHub Actions 资产必须发布后重新下载并独立计算。
+
+### Published
+
+- GitHub Actions run `33327236402` 在 tag commit `6adaf3d` 上完成全部步骤并返回 success。Release API 读回 v0.1.1 为非 draft 的 prerelease，两个资产状态均为 uploaded。
+- 官方 `ThermalPulse-v0.1.1-macos-arm64.dmg` 为 4,202,276 字节，SHA-256 为 `a024fa6e3615edaafdd298407787654fcfcef7ed0fc13e89218c6a01108894f3`。
+- 从 GitHub Release 重新下载 DMG 与校验文件后，SHA-256、DMG CRC、只读挂载、Applications 快捷入口、安装器可执行权限与语法、手动 plist、版本 `0.1.1 (3)`、AppIcon、deep strict、双方精确 CDHash requirement 和 arm64 主程序全部通过独立复验。
+- 工作流按保留策略删除 v0.1.0 的 DMG 与 `.sha256`。API 回读 v0.1.0 与 v0.0.1 的资产列表均为空，两个旧 Release 页面和 tag 继续保留。
 
 ### Not included
 
