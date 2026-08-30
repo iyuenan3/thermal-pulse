@@ -31,6 +31,8 @@ Mac16,7、Apple M4 Pro 已验证双风扇监控和一次短时 Turbo；Mac17,2�
 
 `v0.1.1` 是由 GitHub Actions 构建的 ad hoc 签名预发布测试版，未经过 Apple 公证。首次启动可在 Finder 中右键点击 App，然后选择“打开”。普通只读监控不需要管理员权限。
 
+官方 DMG 的 SHA-256 为 `a024fa6e3615edaafdd298407787654fcfcef7ed0fc13e89218c6a01108894f3`。
+
 要测试 Turbo，先确认没有其他风扇控制 App 正在使用手动模式，再在 ThermalPulse 面板中点击“打开管理员安装器”。Terminal 安装器只接受 `/Applications/ThermalPulse.app`，会请求管理员密码，并把当前 App 与受限 helper 的代码哈希固定到 root-owned manifest。安装完成后回到 App 点击“重新检查状态”。安装本身不会启动 Turbo，也不会写入 SMC。
 
 协议 v8 的管理员安装、XPC 和真实 Turbo 尚未完成本版本的系统级验收。`v0.1.1` 只作为用户自行安装测试的候选版本，不代表其他 Apple 芯片 MacBook Pro 已通过 Turbo 验收。遇到任何身份、连接或读回异常时，Turbo 应保持不可用。
