@@ -2,6 +2,28 @@ import XCTest
 @testable import ThermalPulseCore
 
 final class TelemetryPresentationTests: XCTestCase {
+    func testMenuBarFanColumnCentersZeroOrOneFan() {
+        XCTAssertEqual(
+            MenuBarFanColumnPolicy.layout(from: []),
+            .centered("--")
+        )
+        XCTAssertEqual(
+            MenuBarFanColumnPolicy.layout(from: ["F1 6559"]),
+            .centered("6559")
+        )
+    }
+
+    func testMenuBarFanColumnStacksOnlyTheFirstTwoDynamicFans() {
+        XCTAssertEqual(
+            MenuBarFanColumnPolicy.layout(from: ["F1 1200", "F2 1300"]),
+            .stacked(top: "1200", bottom: "1300")
+        )
+        XCTAssertEqual(
+            MenuBarFanColumnPolicy.layout(from: ["F1 1200", "F2 1300", "F3 1400"]),
+            .stacked(top: "1200", bottom: "1300")
+        )
+    }
+
     func testPerformanceCoreSummaryUsesValidFloatTpFamilyOnly() throws {
         let readings = [
             reading(key: "Tp09", kind: .temperatureCandidate, evidence: .rawUnverified, value: 42),

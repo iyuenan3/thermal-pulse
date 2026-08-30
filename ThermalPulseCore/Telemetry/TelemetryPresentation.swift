@@ -139,6 +139,29 @@ public enum ComponentTemperaturePolicy {
     }
 }
 
+public enum MenuBarFanColumnLayout: Equatable, Sendable {
+    case centered(String)
+    case stacked(top: String, bottom: String)
+}
+
+public enum MenuBarFanColumnPolicy {
+    public static func layout(from fanTexts: [String]) -> MenuBarFanColumnLayout {
+        let values = fanTexts.prefix(2).map(compactValue)
+        switch values.count {
+        case 0:
+            return .centered("--")
+        case 1:
+            return .centered(values[0])
+        default:
+            return .stacked(top: values[0], bottom: values[1])
+        }
+    }
+
+    private static func compactValue(_ text: String) -> String {
+        text.split(separator: " ", maxSplits: 1).last.map(String.init) ?? "--"
+    }
+}
+
 public enum PerformanceCoreTemperaturePolicy {
     public static func matchingReadings(from readings: [SensorReading]) -> [SensorReading] {
         readings.filter { reading in

@@ -48,19 +48,23 @@ private struct MenuBarSummaryLabel: View {
         topLeft: String,
         bottomLeft: String,
         topRight: String,
-        bottomRight: String
+        bottomRight: String?
     ) {
-        let compactFans = fanTexts.map(compactFanValue)
-        let topFan = compactFans.first ?? "--"
-        let bottomFan = compactFans.dropFirst().first ?? "--"
+        let fanLayout = MenuBarFanColumnPolicy.layout(from: fanTexts)
+        let topFan: String
+        let bottomFan: String?
+        switch fanLayout {
+        case let .centered(value):
+            topFan = value
+            bottomFan = nil
+        case let .stacked(top, bottom):
+            topFan = top
+            bottomFan = bottom
+        }
 
         let performance = performanceCoreText.replacingOccurrences(of: " ", with: "")
         let efficiency = efficiencyCoreText.replacingOccurrences(of: " ", with: "")
         return (performance, efficiency, topFan, bottomFan)
-    }
-
-    private func compactFanValue(_ text: String) -> String {
-        text.split(separator: " ", maxSplits: 1).last.map(String.init) ?? "--"
     }
 
     private var accessibilitySummary: String {
@@ -82,7 +86,7 @@ private enum MenuBarSummaryImageRenderer {
         topLeft: String,
         bottomLeft: String,
         topRight: String,
-        bottomRight: String
+        bottomRight: String?
     ) -> NSImage {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
@@ -98,7 +102,7 @@ private enum MenuBarSummaryImageRenderer {
         let rightWidth = ceil(
             max(
                 textWidth(topRight, attributes: attributes),
-                textWidth(bottomRight, attributes: attributes),
+                bottomRight.map { textWidth($0, attributes: attributes) } ?? 0,
                 textWidth("0000", attributes: attributes)
             )
         )
@@ -115,14 +119,24 @@ private enum MenuBarSummaryImageRenderer {
                 at: NSPoint(x: 0, y: rowHeight),
                 withAttributes: attributes
             )
-            (topRight as NSString).draw(
-                at: NSPoint(x: leftWidth + columnGap, y: 0),
-                withAttributes: attributes
-            )
-            (bottomRight as NSString).draw(
-                at: NSPoint(x: leftWidth + columnGap, y: rowHeight),
-                withAttributes: attributes
-            )
+            let rightX = leftWidth + columnGap
+            if let bottomRight {
+                (topRight as NSString).draw(
+                    at: NSPoint(x: rightX, y: 0),
+                    withAttributes: attributes
+                )
+                (bottomRight as NSString).draw(
+                    at: NSPoint(x: rightX, y: rowHeight),
+                    withAttributes: attributes
+                )
+            } else {
+                let textHeight = (topRight as NSString).size(withAttributes: attributes).height
+                let centeredY = max(0, floor((imageHeight - textHeight) / 2))
+                (topRight as NSString).draw(
+                    at: NSPoint(x: rightX, y: centeredY),
+                    withAttributes: attributes
+                )
+            }
             return true
         }
         image.isTemplate = true

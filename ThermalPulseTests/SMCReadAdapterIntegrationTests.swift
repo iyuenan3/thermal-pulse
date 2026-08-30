@@ -12,28 +12,18 @@ final class SMCReadAdapterIntegrationTests: XCTestCase {
 
         let service = try SMCProbeService()
         let snapshot = try await service.scan()
-        let performanceCandidateNames = ["Tp01", "Tp05", "Tp09", "Tp0D", "Tp0H", "Tp0Y", "Tp0b", "Tp0e"]
-        let efficiencyCandidateNames = ["Te05", "Te06", "Te0S", "Te0T"]
-        let performanceKeys = performanceCandidateNames.compactMap(SMCKey.init(rawValue:)).filter { key in
-            snapshot.readings.contains { $0.descriptor.key == key && $0.validity == .valid }
-        }
-        let efficiencyKeys = efficiencyCandidateNames.compactMap(SMCKey.init(rawValue:)).filter { key in
-            snapshot.readings.contains { $0.descriptor.key == key && $0.validity == .valid }
-        }
-        let broadPerformanceKeys = snapshot.readings.compactMap { reading -> SMCKey? in
-            let key = reading.descriptor.key.rawValue
-            guard reading.validity == .valid,
-                  reading.descriptor.kind == .temperatureCandidate,
-                  reading.descriptor.unit == .celsius,
-                  reading.dataType.normalized.trimmingCharacters(in: .whitespacesAndNewlines) == "flt",
-                  key.hasPrefix("Tp")
-            else { return nil }
-            return reading.descriptor.key
-        }
-        let samplingKeys = Array(Set(broadPerformanceKeys + efficiencyKeys)).sorted()
+        let performanceKeys = ComponentTemperaturePolicy.matchingReadings(
+            for: .performanceCore,
+            from: snapshot.readings
+        ).map(\.descriptor.key)
+        let efficiencyKeys = ComponentTemperaturePolicy.matchingReadings(
+            for: .efficiencyCore,
+            from: snapshot.readings
+        ).map(\.descriptor.key)
+        let samplingKeys = Array(Set(performanceKeys + efficiencyKeys)).sorted()
 
-        XCTAssertFalse(performanceKeys.isEmpty, "当前 Mac16,7 应至少提供一个已知 M4 Pro P 核温度 key")
-        XCTAssertFalse(efficiencyKeys.isEmpty, "当前 Mac16,7 应至少提供一个已知 M4 Pro E 核温度 key")
+        XCTAssertFalse(performanceKeys.isEmpty, "当前 Apple Silicon MacBook Pro 应提供有效 Tp 温度候选族")
+        XCTAssertFalse(efficiencyKeys.isEmpty, "当前 Apple Silicon MacBook Pro 应提供有效 Te 温度候选族")
 
         var valuesByKey: [SMCKey: [Double]] = [:]
         for sampleIndex in 0..<12 {
@@ -61,9 +51,8 @@ final class SMCReadAdapterIntegrationTests: XCTestCase {
 
             print(
                 "ThermalPulse temperature trace sample=\(sampleIndex + 1) "
-                    + "broadP={\(summary(for: broadPerformanceKeys))} "
-                    + "curatedP={\(summary(for: performanceKeys))} "
-                    + "curatedE={\(summary(for: efficiencyKeys))}"
+                    + "performance={\(summary(for: performanceKeys))} "
+                    + "efficiency={\(summary(for: efficiencyKeys))}"
             )
             if sampleIndex < 11 {
                 try await Task.sleep(for: .seconds(1))
@@ -84,7 +73,7 @@ final class SMCReadAdapterIntegrationTests: XCTestCase {
                 }.joined(separator: " ")
         )
         print(
-            "ThermalPulse curated core keys: P=\(performanceKeys.map(\.rawValue).joined(separator: ",")) "
+            "ThermalPulse core-family keys: P=\(performanceKeys.map(\.rawValue).joined(separator: ",")) "
                 + "E=\(efficiencyKeys.map(\.rawValue).joined(separator: ","))"
         )
     }
