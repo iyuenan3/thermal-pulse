@@ -4,6 +4,198 @@
 
 当前已有可执行的只读监控里程碑，尚无 release。
 
+## Unreleased · Turbo v6 实机短测与 v7 安全审查 · 2026-08-30
+
+### Changed
+
+- 协议 v6 helper 已由用户显式升级。快速接管短测中，`Ftst` 从启动到连续稳定读回约 0.98 秒；从启动到两台风扇实际 RPM 上升确认约 8.78 秒，说明剩余等待主要来自物理起转和实际 RPM 安全门禁，而不是固定租约等待。
+- 代码审查后把私有协议提升到 v7。failed-safe-auto 且租约仍存在时，300 毫秒看门狗会在下一 tick 立即重试恢复，不再等待原始 600 秒截止时间；未知 `Ftst` 直接拒绝启动且不得写解锁 key。
+- App 的持久 XPC transport 改为按请求身份跟踪 continuation 和超时，状态查询与停止可以并发存在；取消后的状态轮询不能覆盖主动停止结果。
+- 菜单栏模板图片只显示动态枚举结果中的前两台风扇，超过两台时完整信息继续保留在展开面板和辅助功能描述，不再扩张常驻状态项。
+
+### Validated
+
+- v6 短测进入 active。两台风扇从 0 RPM 基线分别上升到约 1321 RPM 和 1423 RPM，动态最大值均为 5777 RPM；用户主动停止后 helper 记录 `restoration_completed issue=none`，租约目录为空。
+- 事后独立只读恢复门禁 1 项通过，确认两台风扇处于 Apple 管理模式且 `Ftst=0`。该用例使用 scheme 自带的 HardwareProbe configuration，没有被普通 Debug 配置跳过。
+- v7 完整普通测试共 78 项，74 项通过、4 项真实硬件测试按设计跳过、0 项失败。Turbo 安全、协调器与 XPC 协议定向测试 45 项全部通过。
+- macOS 26 arm64 Personal Team v7 签名构建成功，App bundle 与内嵌 helper 分别通过 strict 签名校验。
+
+### Not included
+
+- 当前已注册 helper 和运行 App 仍为协议 v6。本轮没有升级 v7 helper、启动新的 Turbo 或写 SMC。
+- v6 短测只覆盖快速接管、active 和用户主动停止。600 秒到期、App 崩溃、XPC 断开、helper 重启和休眠唤醒恢复仍未完成独立实机验收。
+
+## Unreleased · faster Turbo claim and 10 pt status summary · 2026-08-30
+
+### Changed
+
+- 菜单栏 P/E 与双风扇摘要从 22 pt 高、9.5 pt 字形小幅上调为 23 pt 高、10 pt 字形和 11.5 pt 行高，布局与动态枚举不变，见 ADR-032 Follow-up。
+- Turbo 写入 `Ftst=1` 后不再固定白等 3 秒，改为每 100 毫秒读回，连续两次为 1 就继续，3 秒作为失败上限。恢复时的 `Ftst=0` 仍保留原有 3 秒稳定窗口，模式、最大目标与实际 RPM 门禁不变，见 ADR-033。
+- Turbo 启动中文案改为“正在接管并等待风扇起转”，区分安全状态读回与风扇物理起转。
+- 私有协议从 v5 提升到 v6，确保当前 App 会拒绝仍使用固定等待逻辑的旧 helper，并引导用户显式升级。
+
+### Validated
+
+- 优化前的 `TurboSafetyControllerTests` 基线在沙箱外通过；优化后的 Turbo 安全控制器与 XPC 协议定向测试共 29 项全部通过，0 失败、0 跳过。新用例自证 100 毫秒轮询和连续两次稳定读回真实执行，并验证超时时没有碰风扇、租约可安全清理。
+- macOS 26 arm64 Personal Team 签名 v6 构建通过，App 与内嵌 helper 均通过 strict 签名校验。新 App 已作为唯一 ThermalPulse 实例启动，真实菜单栏截图读回 `P64°`、`E50°` 与两台风扇数值，四项完整无裁切；当前系统 v5 helper 保持不变并被 v6 App 按协议不兼容拒绝。
+
+### Not included
+
+- 本轮没有注册、升级或替换已运行的系统 v5 helper，没有调用 Turbo，也没有 SMC 写入。更快启动路径只位于新构建的内嵌 v6 helper，需要用户后续单独授权升级才会生效。
+
+## Unreleased · larger P/E status summary refinement · 2026-08-30
+
+### Changed
+
+- P/E 与双风扇 2×2 布局保持不变，模板图片从 20 pt 增至 22 pt 高，等宽半粗体从 8.5 pt 增至 9.5 pt，两行固定坐标调整为 0 与 11 pt，见 ADR-032 Follow-up。
+
+### Validated
+
+- macOS 26 arm64 Personal Team 签名构建通过，App 与内嵌 helper 均通过 strict 签名校验。
+- 新构建已作为唯一 ThermalPulse 实例启动。真实菜单栏截图读回 `P43°`、`E42°` 与两台风扇数值，四项完整且没有上下裁切；root 租约目录为空，本轮没有升级 helper、调用 Turbo 或写入 SMC。
+
+### Not included
+
+- 本轮不改变温度聚合、采样、展开面板与 Turbo 安全逻辑。
+
+## Unreleased · P/E status summary refinement · 2026-08-30
+
+### Changed
+
+- 菜单栏左列从 P 核与电池改为 P 核与 E 核热点，电池温度继续保留在展开面板，见 ADR-032。
+- 模板图片从 18 pt 增至 20 pt 高，等宽半粗体从 7.5 pt 增至 8.5 pt，两行固定坐标同步调整为 0 与 10 pt。
+
+### Validated
+
+- macOS 26 arm64 Personal Team 签名构建通过，App 与内嵌 helper 均通过 strict 签名校验；P/E/电池聚合定向测试通过。
+- 新构建已作为唯一 ThermalPulse 实例启动。真实菜单栏截图读回 `P49°`、`E48°` 与两台风扇数值，四项完整且没有顶部裁切；root 租约目录为空，本轮没有升级 helper、调用 Turbo 或写入 SMC。
+
+### Not included
+
+- 本轮不改变 P 核或 E 核热点聚合、1 Hz 采样、Turbo helper 与安全租约。
+
+## Unreleased · fixed-size status image milestone · 2026-08-30
+
+### Fixed
+
+- 修复 `MenuBarExtra` 忽略多行文本 6 pt 字号并裁掉顶部的问题。四项摘要现在预渲染为固定 18 pt 高模板图片，见 ADR-031。
+- 图片内部使用 7.5 pt 等宽半粗体与固定两行、两列坐标，在完整容纳四项摘要的前提下提高菜单栏可读性；系统状态项只负责模板着色，不再参与字体与换行布局。
+- 状态栏标签出现时立即启动普通权限只读采样，不再要求用户先展开面板才能看到实时摘要。
+
+### Validated
+
+- macOS 26 arm64 无签名 Debug 构建与 Personal Team 签名构建均通过；App 与内嵌 helper 通过 strict 校验。
+- 固定图片构建已作为唯一菜单栏实例启动，现有 root helper 进程保持不变且租约目录为空。本轮没有升级 helper、调用 Turbo 或写入 SMC。
+
+### Not included
+
+- Computer Use 无法附着无窗口的 `MenuBarExtra` 或 `SystemUIServer` 状态项，最终实际菜单栏外观仍需以用户当前屏幕读回为准。
+
+## Unreleased · micro menu bar summary milestone · 2026-08-30
+
+### Changed
+
+- 状态项从 8 pt 缩小为 6 pt 等宽半粗体，温度压缩为 `P/B` 前缀，右列省略 `F1/F2` 与 RPM 单位，只保留两台动态风扇的数值，见 ADR-030。
+- 展开面板和辅助功能描述继续保留完整名称、编号与单位。
+
+### Validated
+
+- macOS 26 arm64 无签名 Debug 构建与 Personal Team 签名构建均通过；App 与内嵌 helper 通过 strict 校验。
+- 紧凑构建已作为唯一菜单栏实例启动，现有 root helper 进程保持不变且租约目录为空。本轮没有升级 helper、调用 Turbo 或写入 SMC。
+
+### Not included
+
+- 6 pt 紧凑摘要在实际菜单栏中的最终尺寸和可读性仍需用户确认。
+
+## Unreleased · two-line menu bar host fix milestone · 2026-08-30
+
+### Fixed
+
+- 修复复合 SwiftUI 状态项只显示第一个 P 核文本的问题。摘要改为单个两行等宽文本，目标布局为左上 P 核、左下电池、右上风扇 1、右下风扇 2，见 ADR-029。
+- 风扇内容继续来自动态枚举并按行分配，没有硬编码当前机器的 SMC 风扇索引。
+
+### Validated
+
+- macOS 26 arm64 无签名 Debug 构建与 Personal Team 签名构建均通过；App 与内嵌 helper 通过 strict 校验。
+- 新构建已作为唯一菜单栏实例启动，现有 root helper 进程保持不变且租约目录为空。本轮没有升级 helper、调用 Turbo 或写入 SMC。
+
+### Not included
+
+- 系统状态项中的最终 2×2 外观仍需用户直接查看菜单栏确认。
+
+## Unreleased · compact menu bar presentation milestone · 2026-08-30
+
+### Changed
+
+- 状态栏改为两个并排的小字号双行分组，左侧上下显示 P 核热点与电池温度，右侧按动态枚举顺序逐行显示风扇实际 RPM，见 ADR-028。
+- 菜单栏弹出面板移除滚动容器与固定高度，并缩短曲线、卡片内边距和区块间距，让核心信息一次展开可见。
+
+### Validated
+
+- macOS 26 arm64 无签名 Debug 构建通过。完整普通测试 75 项中 71 项通过、4 项硬件测试按设计跳过、0 项失败。
+- 新 Personal Team 签名 App 与内嵌 helper 均通过 strict 校验；新 App 已作为唯一菜单栏实例启动，现有 root helper 进程保持不变且租约目录为空。
+- 本里程碑只改展示层，没有升级 helper、调用 Turbo 或写入 SMC。
+
+### Not included
+
+- 双行状态项的字号和无滚动面板的实际屏幕可读性仍需用户在菜单栏中人工确认。
+
+## Unreleased · core temperature curve sentinel filtering milestone · 2026-08-30
+
+### Fixed
+
+- P 核和 E 核曲线在展示前省略 10 至 120 °C 之外的原始哨兵点，0 °C 不再被画成真实核心温度，见 ADR-027。
+- 省略哨兵后沿用时间间隙分段，避免直接连接缺口两侧而制造连续读数。
+
+### Validated
+
+- 新增定向回归测试，确认序列 `[48, 0, 50]` 显示为两个独立的有效点与两个分段。TelemetryPresentation 定向测试 9 项全部通过。
+- 完整普通测试 75 项中 71 项通过、4 项硬件测试按设计跳过、0 项失败。没有运行真实 Turbo，也没有写 SMC。
+- 新 Personal Team 签名 App 与内嵌 helper 均通过 strict 校验；包含曲线修复的 App 已作为唯一菜单栏实例启动，现有 v5 root helper 保持运行且租约目录为空。
+
+### Not included
+
+- 尚未经过足够长时间的人工曲线观察，用户仍需确认 P 核代表 key 再次返回 0 哨兵时界面只留下断线，不出现 0 °C 下坠。
+
+## Unreleased · protocol v5 RPM readback and control-state milestone · 2026-08-30
+
+### Fixed
+
+- 修复 Turbo active 时逐风扇行仍显示“苹果自动控制”的问题。文案现在由可信 `TurboStatus` 映射，active 显示“Turbo 全速控制”，不可信状态不宣称已恢复。
+- 修复实际 RPM 小幅高于标称最大值时被验收误判的问题。最大目标仍要求原始字节精确等于动态 `F{i}Mx`，实际反馈允许不超过动态最大值 5% 的控制或量化超调，见 ADR-026。
+
+### Changed
+
+- 启动上升门禁、300 毫秒 active watchdog 与 HardwareProbe 统一复用实际 RPM 可信范围；非有限、负值或超过动态最大值 105% 的读回会触发恢复。
+- 私有 XPC 安全语义升级到协议 v5，防止新 App 继续连接没有该 active watchdog 规则的 v4 helper。
+
+### Validated
+
+- 修复前 v4 短测实际进入 active。独立读回 `Ftst=1`、两台风扇 mode 1、目标原始字节等于 5777 RPM 动态最大值，实际样本分别为 5701、5855、5811 RPM 和 5776、5775、5778 RPM。
+- 主动停止后独立读回两台风扇 mode 3、`Ftst=0`，lease 不存在；helper 记录 `restoration_completed issue=none`。
+- 修复后定向测试 35 项全部通过。完整普通测试 74 项中 70 项通过、4 项硬件测试按设计跳过、0 项失败；显式 HardwareProbe 4 项中 3 项通过、active 读回按设计跳过、0 项失败。
+- v5 Personal Team Debug App 与 helper 构建成功，并通过 App deep strict、helper strict、固定 identifier 和非空同 Team 校验。
+
+### Not included
+
+- 系统中仍运行已注册 v4 helper。本里程碑没有升级、注册或启动 v5 helper，也没有再次执行真实 Turbo。v5 active 文案、5% 容差、主动停止以及到期、崩溃、断连、helper 重启和休眠恢复仍需后续独立授权与实机读回。
+
+## Unreleased · protocol v4 helper registration milestone · 2026-08-30
+
+### Fixed
+
+- helper 替换在异步注销后增加稳定未注册观察门禁，连续确认 `notRegistered` 或 `notFound` 后只执行一次注册，见 ADR-025。
+
+### Validated
+
+- 用户从 `notRegistered` 状态显式注册包含稳定替换门禁的协议 v4 helper。统一日志读回 `SMAppService.register()` 成功；launchd 读回服务由 ServiceManagement 管理、以 root 运行且 Mach endpoint 活跃。
+- App 与 helper 建立双向同 Team 签名约束 XPC。App 与 helper 的 strict 签名、固定 identifier 和非空同 Team 约束此前已由同一签名构建读回。
+- root lease 不存在。注册后 HardwareProbe 共 4 项，3 项通过、1 项 Turbo active 读回按设计跳过；定向门禁明确读回风扇 0 与风扇 1 均为 mode 3，`Ftst=0` 断言通过。
+
+### Not included
+
+- 本里程碑没有重新执行已注册 helper 的替换路径，也没有调用 `startTurbo()` 或写 SMC，不确认 Turbo active、最大目标、实际 RPM、主动停止、600 秒到期或故障恢复。真实启动仍需要用户再次明确授权。
+
 ## Unreleased · first short Turbo hardware attempt milestone · 2026-08-30
 
 ### Validated

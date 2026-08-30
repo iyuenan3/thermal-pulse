@@ -8,7 +8,7 @@
 
 ## 怎么起
 
-当前同时支持关闭代码签名的本地测试构建，以及使用当前开发机免费 Personal Team 的本机开发签名构建，不提供安装包。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。工作区 App bundle 已包含带受限写入链路的 helper executable 和 LaunchDaemon plist；同一签名产物已在当前开发机完成系统升级并由 ServiceManagement 运行。启动 App 只查询注册状态，显式注册或升级都不会自动启动 Turbo 或写 SMC。
+当前支持关闭代码签名的本地测试构建和 Personal Team 本机签名构建，不提供安装包。App bundle identifier 已固定为 `io.github.iyuenan3.thermalpulse`，helper identifier 与 Mach service 已固定为 `io.github.iyuenan3.thermalpulse.helper`。2026-08-30 协议 v6 Personal Team Debug helper 已由用户显式升级，并完成快速 `Ftst` 接管、短时 active、实际 RPM 上升和主动停止恢复读回；系统当前仍运行该 v6 App 与 root helper，租约目录为空。代码审查后的 v7 只完成源码、测试、签名构建与只读恢复门禁，没有升级系统 helper 或执行新的 Turbo。该本机原型不得替代 Developer ID 分发、公证或其他机型验收。
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ThermalPulse.xcodeproj -scheme ThermalPulse -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/thermal-pulse-derived CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
@@ -43,7 +43,7 @@ N/A。项目是本地菜单栏 App，不提供服务器、域名、远程访问�
 ## helper 注册与运行
 
 - 已验证的 bundle 布局为 `Contents/Resources/ThermalPulseHelper` 与 `Contents/Library/LaunchDaemons/io.github.iyuenan3.thermalpulse.helper.plist`。plist 的 `BundleProgram` 指向前者，`Label` 与唯一 Mach service 均为 helper identifier。
-- helper 随签名 App Bundle 分发，使用 `SMAppService.daemon(plistName:)` 查询和注册 LaunchDaemon。当前实现把 `notRegistered` 与系统尚未记录服务时的 `notFound` 都映射为可注册状态；待批准时提供系统设置入口，只有 `enabled` 才连接 XPC。旧 helper 返回 write-path-unavailable 时，App 只在用户再次确认后失效旧 XPC，等待异步 `unregister()` 完成，再注册当前签名版本。
+- helper 随签名 App Bundle 分发，使用 `SMAppService.daemon(plistName:)` 查询和注册 LaunchDaemon。当前实现把 `notRegistered` 与系统尚未记录服务时的 `notFound` 都映射为可注册状态；待批准时提供系统设置入口，只有 `enabled` 才连接 XPC。旧 helper 返回 write-path-unavailable 或协议不兼容时，App 只在用户再次确认后失效旧 XPC，等待异步 `unregister()` 完成，并连续观察未注册状态稳定后注册一次当前签名版本。
 - 普通监控不依赖 helper。只有用户首次使用 Turbo 时才引导注册和批准。
 - helper 以 root 权限运行，但接口仅覆盖固定 Turbo 租约，不承担采样、图表或网络职责。
 - 持久租约路径固定为 `/Library/Application Support/ThermalPulse/turbo-lease.plist`。目录权限为 0755，租约文件权限为 0600；内容不含设备标识、RPM、凭证或用户数据。只有全部自动模式读回确认后才删除。
@@ -54,12 +54,19 @@ N/A。项目是本地菜单栏 App，不提供服务器、域名、远程访问�
 - Xcode 26.6 本机 SDK 明确要求包含 LaunchDaemon 的 App 完成公证。Personal Team 构建不作为发布方案，`spctl` 与 notarized 签名 requirement 仍未通过。
 - 加入真实写入源码后的最终 Personal Team Debug 构建由 Xcode 成功产出。同一 App 与 helper 在沙箱外分别通过 `codesign --verify --deep --strict` 和 `codesign --verify --strict`。2026-08-29 用户明确授权升级但不启动 Turbo 后，旧安全 stub 被注销，当前签名版本完成重新注册；系统读回新 root helper 由 ServiceManagement 管理、Mach endpoint 活跃，App 通过 XPC 取得无错误 inactive 状态。升级前后租约文件均不存在，升级后只读硬件探测 57 项全部通过，`F0Md`、`F1Md` 与 `Ftst` 继续为 0。
 - 2026-08-30 用户明确授权一次短时 Turbo 实机测试。启动前专用只读门禁通过；helper 随后以 readback mismatch 返回 failed-safe-auto，没有进入 active，也没有自动重试。失败后租约文件不存在，独立 HardwareProbe 再次通过并读回 `F0Md=0`、`F1Md=0`、`Ftst=0`、`F0Ac=1350.73 RPM`、`F1Ac=1462.07 RPM`，两个目标值已回到苹果自动控制值。系统仍读回同一 root helper 与活跃 Mach endpoint。本次只确认失败保护后的 automatic 恢复，未确认最大目标或 Turbo active。
+- 随后的第二次短测中，风扇短时转动后被系统接管，helper 到期恢复持续失败，root lease 仍存在。独立只读复验为 `F0Md=3`、`F1Md=3`、`Ftst=0`、目标和实际 RPM 全部为 0，说明当前硬件已由苹果 system 模式接管，但 helper 的恢复完成与 lease 清理没有验收通过。工作树现已加入 mode 3 恢复、`Ftst` 所有权先持久化和 300 毫秒 active 协调，协议 v3 的 Personal Team 签名构建及 strict 校验均已通过。当前不允许再次启动 Turbo，直到用户显式升级 helper 且不启动 Turbo，并确认旧 lease 删除、两台风扇为 Apple 管理模式、`Ftst=0` 与实际 RPM 有效。
+- 用户随后完成协议 v3 helper 升级，旧租约被清除且当时只读门禁通过。最新一次启动尝试暴露 `Ftst` 异步生效时序：helper 在写 1 后立即读到旧值 0，恢复又在真正生效前跳过清除并删除租约。当前独立只读结果为两台风扇 mode 0、`Ftst=1`、租约文件不存在。工作树已升级协议 v4，写 1 和写 0 后都等待 3 秒稳定读回；67 项普通测试通过、4 项硬件测试按设计跳过，Personal Team Debug 构建和 strict 同 Team 校验通过。当前仍禁止启动 Turbo，先以单独授权恢复 `Ftst=0` 并只读确认，再由用户在 App 内显式升级 v4 helper。
+- 重启恢复 `Ftst=0` 后，用户从 `notRegistered` 状态显式注册包含稳定替换门禁的协议 v4 helper。统一日志读回 `SMAppService.register()` 成功，launchd 读回服务由 ServiceManagement 管理、root 运行且 Mach endpoint 活跃；App 与 helper 已建立双向签名约束 XPC。租约不存在。注册后 HardwareProbe 共 4 项，3 项通过、1 项 Turbo active 读回按设计跳过；定向门禁读回风扇 0 和风扇 1 均为 mode 3，`Ftst=0` 断言通过。没有调用 `startTurbo()`，没有写 SMC，也没有重新执行已注册 helper 的替换路径。
+- 随后一次用户授权的 v4 短测进入 active。独立读回 `Ftst=1`、两台风扇 mode 1、目标原始字节等于动态 5777 RPM 最大值，实际样本分别约为 5701 至 5855 RPM、5775 至 5778 RPM。主动停止后两台风扇 mode 3、`Ftst=0`、lease 不存在，helper 记录无错误恢复。工作树已把实际 RPM 可信上限调整为动态最大值 105%，修复 active 文案并升级协议 v5；v5 签名产物已验证，但未调用 `SMAppService` 升级，也未再次启动 Turbo。
+- 用户随后从唯一运行的 v5 Personal Team 签名 App 完成 helper 升级并确认验收通过。升级后 App 与 helper 进程均来自指定 v5 构建，`launchctl` 读回新的 root helper 由 ServiceManagement 管理、Mach endpoint 活跃，租约目录为空。本轮独立读回不包含再次启动 Turbo、模式、目标或实际 RPM，因此不替代此前 v4 短测，也不覆盖故障恢复路径。
+- 随后工作树将启动时 `Ftst=1` 的固定 3 秒等待改为 100 毫秒轮询、连续两次稳定读回和 3 秒失败上限，并把私有 XPC 协议升级为 v6。Personal Team Debug App 与内嵌 v6 helper 通过 strict 签名校验后，用户显式完成 helper 升级和一次短时 Turbo。日志显示从 `activation_started` 到 `thermal_manager_unlock_claimed` 约 0.98 秒，从启动到实际 RPM 上升确认约 8.78 秒；两台风扇当时分别约为 1321 RPM 和 1423 RPM，动态最大值均为 5777 RPM。用户主动停止后 helper 记录 `restoration_completed issue=none`，租约目录为空；后续独立只读门禁 1 项通过，确认两台风扇为 Apple 管理且 `Ftst=0`。该证据不覆盖 600 秒到期、App 崩溃、XPC 断开、helper 重启或休眠恢复。
+- 对 v6 基线的代码审查发现恢复失败重试、未知 `Ftst` 写入和并发 XPC 请求隔离缺口。提交 `934721e` 修复这些问题并将协议提升到 v7。完整普通测试 74 项通过、4 项真实硬件测试按设计跳过，Personal Team v7 App 与内嵌 helper 均通过 strict 签名校验。当前系统仍运行 v6 helper 和 v6 App；本轮没有调用 `SMAppService` 升级、没有启动 Turbo，也没有写 SMC。未来首次运行 v7 App 时会按协议不兼容禁用 Turbo，必须由用户单独确认升级 helper。
 
 ## 备份 / 升级 / 回滚
 
 - 首版不自动持久化传感器历史，因此没有用户数据备份要求。
-- 升级前若存在 ThermalPulse 租约，必须先恢复自动模式并确认读回，再替换 App 或 helper。
-- 更新已注册 helper 时必须先失效旧 XPC，并等待 `SMAppService` 异步注销完成后再注册当前签名版本。禁止同步注销后立即重注册，也禁止用手工 `launchctl` 或直接覆盖系统文件绕过 ServiceManagement。
+- 升级前若存在 ThermalPulse 租约，必须先独立确认硬件处于 Apple 管理模式。修复恢复逻辑的 helper 升级可以用于清理已确认安全但卡住的旧 lease，升级动作本身不得启动 Turbo。无租约 `Ftst=1` 不能假定属于 ThermalPulse，也不能依赖 helper 升级自动清除，必须以本次日志证据和用户独立授权执行窄范围恢复。
+- 更新已注册 helper 时必须先失效旧 XPC，等待 `SMAppService` 异步注销完成，并连续观察状态稳定为未注册后再注册一次当前签名版本。失败后回到只读状态，不自动重试；禁止用手工 `launchctl` 或直接覆盖系统文件绕过 ServiceManagement。
 - 卸载顺序必须是停止 Turbo、恢复自动、注销 helper、确认服务停止，最后移除 App。
 - helper 更新失败时回滚到已签名的兼容版本；无法确认兼容时禁用 Turbo，但保留只读监控。
 - 具体安装、升级、卸载和回滚命令必须在真实签名构建验证后补充，禁止把未经验证的 sudo 命令写成操作手册。
