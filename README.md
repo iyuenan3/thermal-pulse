@@ -4,33 +4,32 @@ ThermalPulse 是一个原生 macOS 本地热状态监控工具。目标是像活
 
 ## 当前状态
 
-项目处于 pre-alpha。当前切片已经包含：
+项目处于 pre-alpha，当前支持 macOS 26 及以上的 Apple 芯片 MacBook Pro：
 
-- 原生 SwiftUI 菜单栏 App 与无侧栏单页监控窗口。
-- 普通权限只读 AppleSMC adapter。
-- 动态 key 和风扇枚举、typed sensor model、数据类型解码与有效性判断。
-- 启动时建立动态采样白名单，之后以 1 Hz 读取有效风扇实际转速和温度候选。
-- 每个传感器最多保存 3600 个内存样本，并展示最新值、最小值、最大值和平均值。
-- 动态聚合有效 `Tp` float 温度候选，在概览和菜单栏显示 P 核温度族平均值、最高值与候选数量，不给单个 key 编造具体核心身份。
-- 提供 5 分钟、15 分钟和 1 小时历史曲线，默认选择已验证风扇和当前最高的一个 `Tp` 温度候选，用户可手动调整并最多选择 6 项。
-- RPM 与原始温度候选分图展示，高级原始候选默认折叠，显示前进行保留端点、极值和采样间隙的降采样。
-- 菜单栏标题直接显示紧凑 P 核温度和所有已枚举风扇 RPM；弹出面板用蓝色温度主状态、紧凑分组信息行和底部主按钮展示逐风扇读数与“打开监控窗口”，主窗口关闭后可以重新打开并置于前台。
-- 主窗口与菜单栏弹窗均提供固定 10 分钟 Turbo 控件。源码包含受限 helper 写入适配器、持久租约、独立看门狗、断连和唤醒恢复状态机；接口仍只有无参数启动、停止和状态查询。最终写入版 helper 已在当前开发机完成签名升级、root 启动与 XPC inactive 状态回读，界面现可进入启动确认；本轮没有调用 Turbo 或真实写入 SMC。
-- 记录低频本地性能标记，用于将窗口、曲线和时间范围状态与 CPU、内存观测对齐。
-- 普通逻辑测试，以及需要显式选择的当前 Mac 只读硬件探测测试。
+- 菜单栏左列上下显示 P 核与 E 核热点温度，右列按动态风扇数量显示实际 RPM。单风扇垂直居中，双风扇上下排列。
+- 点击菜单栏图标即可一次看到 P 核、E 核、电池温度、5 分钟温度曲线、系统 thermal state 和全部风扇，无独立监控窗口。
+- 普通权限只读 AppleSMC，每秒采样一次，每个序列最多保存 1 小时内存历史。
+- 核心温度使用动态 `Tp*` 与 `Te*` 候选族，不硬编码机型 key，也不把单个 key 猜成具体核心。
+- Turbo 源码只提供固定 600 秒全速、主动停止和失效恢复，不接受任意 RPM、时长或 SMC key。
 
-当前不包含逐 key 传感器中文语义确认、真实 SMC 写入、已通过实机验收的 Turbo、安装包或发布版本。LaunchDaemon 升级、root 启动和最终 helper 的双向签名 XPC 已在当前开发机实际验证，但不能替代手动模式、最大目标、实际 RPM 和恢复 automatic 的实机读回。加速数据测试已经覆盖 312 个序列的 1 小时容量边界，Debug App 已完成 3605 秒压力运行，最终 Release App 也已完成 3605 秒真实运行并取得 60 个连续监督样本。当前 Mac16,7 上，`Tp` 温度族平均值已通过短时 CPU 负载响应验证。
+Mac16,7、Apple M4 Pro 已验证双风扇监控和一次短时 Turbo；Mac17,2、Apple M5 已验证单风扇只读监控。其他 Apple 芯片 MacBook Pro 仍需要实机证据，不能从这两台机器直接外推。
 
 ## 安全边界
 
 - 默认状态永远是苹果自动风扇控制。
 - 普通监控不要求 root，不写任何 SMC 值。
-- `Tp` 只作为当前机器有负载响应证据的 P 核温度候选族；单个温度 key 仍只显示原始名称，不会被猜成具体核心或硬件部件。
-- 当前机器的只读验证不能代表其他 Apple Silicon 机型已经受支持。
-- Turbo 写入路径已在源码中按最小权限设计、实现并完成 helper 系统升级，但在真实模式、目标、实际 RPM 和恢复 automatic 读回前不视为验收通过。
+- P 核、E 核只使用当前机器有效且合理的温度候选族；单个温度 key 不会被猜成具体核心身份。
+- 两台机器的验证不能代表全部 Apple 芯片 MacBook Pro 已经通过。
+- Turbo 写入路径按最小权限设计，必须在目标机型上分别取得模式、目标、实际 RPM 与恢复苹果控制的真实读回。
 - App 使用 `io.github.iyuenan3.thermalpulse`，helper 与 Mach service 使用 `io.github.iyuenan3.thermalpulse.helper`。双方从自身有效签名动态取得 Team ID，并同时校验 Apple 签名锚点、固定 identifier 和相同 Team ID；未签名构建拒绝建立 XPC 信任。
 
 完整产品边界、架构和决策见 [`AIREADME/`](AIREADME/INDEX.md)。
+
+## 下载与安装
+
+从 [GitHub Releases](https://github.com/iyuenan3/thermal-pulse/releases) 下载 `ThermalPulse-v0.0.1-macos-arm64.dmg`，打开后把 ThermalPulse 拖入 Applications。
+
+`v0.0.1` 是由 GitHub Actions 构建的 ad hoc 签名预览版，未经过 Apple 公证。首次启动可在 Finder 中右键点击 App，然后选择“打开”。普通只读监控可以使用，但公开 DMG 没有 Developer ID Team ID，因此 Turbo 会按安全设计保持不可用。
 
 ## 本地构建
 

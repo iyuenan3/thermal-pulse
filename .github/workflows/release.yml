@@ -1,0 +1,171 @@
+name: Release DMG
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish Apple Silicon DMG
+    runs-on: macos-26-arm64
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate release tag and project version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported release tag: ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+
+          release_version="${GITHUB_REF_NAME#v}"
+          project_version="$({
+            xcodebuild \
+              -project ThermalPulse.xcodeproj \
+              -scheme ThermalPulse \
+              -configuration Release \
+              CODE_SIGNING_ALLOWED=NO \
+              -showBuildSettings
+          } | awk '/MARKETING_VERSION = / { print $3; exit }')"
+
+          if [[ "${project_version}" != "${release_version}" ]]; then
+            echo "Tag ${release_version} does not match MARKETING_VERSION ${project_version}" >&2
+            exit 1
+          fi
+
+          echo "RELEASE_VERSION=${release_version}" >> "${GITHUB_ENV}"
+          echo "DERIVED_DATA=${RUNNER_TEMP}/DerivedData" >> "${GITHUB_ENV}"
+          echo "DMG_NAME=ThermalPulse-${GITHUB_REF_NAME}-macos-arm64.dmg" >> "${GITHUB_ENV}"
+
+      - name: Run normal tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -quiet \
+            -project ThermalPulse.xcodeproj \
+            -scheme ThermalPulse \
+            -configuration Debug \
+            -destination 'platform=macOS,arch=arm64' \
+            -derivedDataPath "${DERIVED_DATA}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
+            test
+
+      - name: Build release app
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -quiet \
+            -project ThermalPulse.xcodeproj \
+            -scheme ThermalPulse \
+            -configuration Release \
+            -destination 'platform=macOS,arch=arm64' \
+            -derivedDataPath "${DERIVED_DATA}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
+            build
+
+      - name: Package and verify DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app_path="${DERIVED_DATA}/Build/Products/Release/ThermalPulse.app"
+          helper_path="${app_path}/Contents/Resources/ThermalPulseHelper"
+          artifact_dir="${RUNNER_TEMP}/artifacts"
+          staging_dir="${RUNNER_TEMP}/dmg-staging"
+          mount_dir="${RUNNER_TEMP}/dmg-mount"
+          dmg_path="${artifact_dir}/${DMG_NAME}"
+
+          test -d "${app_path}"
+          test -x "${helper_path}"
+
+          bundle_version="$(plutil -extract CFBundleShortVersionString raw "${app_path}/Contents/Info.plist")"
+          if [[ "${bundle_version}" != "${RELEASE_VERSION}" ]]; then
+            echo "Built bundle version ${bundle_version} does not match ${RELEASE_VERSION}" >&2
+            exit 1
+          fi
+
+          codesign --force --sign - "${helper_path}"
+          codesign --force --sign - "${app_path}"
+          codesign --verify --deep --strict --verbose=2 "${app_path}"
+
+          mkdir -p "${artifact_dir}" "${staging_dir}" "${mount_dir}"
+          ditto "${app_path}" "${staging_dir}/ThermalPulse.app"
+          ln -s /Applications "${staging_dir}/Applications"
+
+          hdiutil create \
+            -volname "ThermalPulse" \
+            -srcfolder "${staging_dir}" \
+            -ov \
+            -format UDZO \
+            "${dmg_path}"
+          hdiutil verify "${dmg_path}"
+
+          hdiutil attach \
+            "${dmg_path}" \
+            -readonly \
+            -nobrowse \
+            -mountpoint "${mount_dir}"
+          trap 'hdiutil detach "${mount_dir}" >/dev/null 2>&1 || true' EXIT
+
+          test -d "${mount_dir}/ThermalPulse.app"
+          test -L "${mount_dir}/Applications"
+          codesign --verify --deep --strict --verbose=2 "${mount_dir}/ThermalPulse.app"
+          mounted_version="$(plutil -extract CFBundleShortVersionString raw "${mount_dir}/ThermalPulse.app/Contents/Info.plist")"
+          test "${mounted_version}" = "${RELEASE_VERSION}"
+
+          hdiutil detach "${mount_dir}"
+          trap - EXIT
+
+          (
+            cd "${artifact_dir}"
+            shasum -a 256 "${DMG_NAME}" > "${DMG_NAME}.sha256"
+          )
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          notes_path="${RUNNER_TEMP}/release-notes.md"
+          printf '%s\n' \
+            "# ThermalPulse ${GITHUB_REF_NAME}" \
+            "" \
+            "首个公开预览版本，支持 macOS 26 及以上的 Apple 芯片 MacBook Pro。" \
+            "" \
+            "- 菜单栏显示 P 核、E 核温度和动态风扇转速。" \
+            "- 展开面板显示电池温度、5 分钟温度曲线、系统热状态和全部风扇。" \
+            "- 单风扇转速居中显示，双风扇转速上下显示。" \
+            "" \
+            "此公开 DMG 使用 ad hoc 签名且未公证。普通只读监控可用，但因没有 Developer ID Team ID，Turbo 按安全设计保持不可用。" \
+            > "${notes_path}"
+
+          gh release create "${GITHUB_REF_NAME}" \
+            "${RUNNER_TEMP}/artifacts/${DMG_NAME}" \
+            "${RUNNER_TEMP}/artifacts/${DMG_NAME}.sha256" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "ThermalPulse ${GITHUB_REF_NAME}" \
+            --notes-file "${notes_path}" \
+            --prerelease \
+            --verify-tag
