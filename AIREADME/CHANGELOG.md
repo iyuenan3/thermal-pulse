@@ -2,7 +2,7 @@
 
 > append-only，版本块倒序。这里只记录 release 或明确里程碑，原因指向 DECISIONS，未来方向写入 ROADMAP。
 
-当前已发布版本为 v0.0.1；v0.1.0 候选已通过本地发布门禁，等待 GitHub Actions 发布。
+当前已发布版本为 v0.1.0。
 
 ## v0.1.0 · 正式 App 图标 · 2026-08-31
 
@@ -21,9 +21,16 @@
 - macOS 26 arm64 Release App 构建通过，Info.plist 读回版本 `0.1.0 (2)` 与 `CFBundleIconName=AppIcon`，资源目录生成 `AppIcon.icns` 和 `Assets.car`，主可执行文件读回 arm64。
 - 本地同口径测试 DMG 完成 helper 与 App ad hoc 签名、deep strict 校验、CRC、只读挂载、Applications 快捷入口、图标、版本和 arm64 架构复验。
 
+### Published
+
+- GitHub Actions run `33324533793` 在 tag commit `cf85878` 上完成全部步骤并返回 success，Release API 读回 v0.1.0 为非 draft 的 prerelease。
+- Release 包含 `ThermalPulse-v0.1.0-macos-arm64.dmg` 和对应 `.sha256` 文件。GitHub 记录的 DMG 大小为 4,195,525 字节，SHA-256 为 `f5f4487904e2660fddf37568b0aa97ffd28b8290759a2a5b63ca97129af2afff`。
+- 从 GitHub Release 重新下载两个资产后，SHA-256 文件校验、DMG CRC、只读挂载、Applications 快捷入口、`AppIcon.icns`、版本 `0.1.0 (2)`、deep strict 完整性与 arm64 Mach-O 读回全部通过。
+- v0.1.0 验证通过后，按用户确认的保留策略删除 v0.0.1 的旧 DMG 和 `.sha256`。API 回读 v0.0.1 资产列表为空，旧 Release 页面与 tag 保留。
+
 ### Not included
 
-- 本候选仍未使用 Developer ID 签名或 Apple 公证，公开 DMG 的 Turbo 按既有非空同 Team 门禁保持不可用。
+- 本版本仍未使用 Developer ID 签名或 Apple 公证，公开 DMG 的 Turbo 按既有非空同 Team 门禁保持不可用。
 - 本轮没有升级系统 helper、启动 Turbo 或执行新的真实 SMC 写入。
 
 ## v0.0.1 · 首个公开 DMG 预览版 · 2026-08-31
